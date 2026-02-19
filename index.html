@@ -4,65 +4,212 @@
     <meta charset="UTF-8">
     <title>Мой облачный проект</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; padding: 50px; background-color: #f4f4f9; }
-        .form-container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 300px; }
-        input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #f4b400; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; }
-        button:hover { background: #dfa400; }
+        body {
+            font-family: sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .form-container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #f4b400;
+            border: none;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #dfa400;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #feed {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .post {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            color: #555;
+        }
+        .post-name {
+            font-weight: bold;
+            color: #333;
+        }
+        .like-btn {
+            background: #eee;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .like-btn:hover {
+            background: #ffeb3b;
+        }
+        .time {
+            color: #888;
+            font-size: 0.85em;
+        }
     </style>
 </head>
 <body>
 
-<div class="form-container">
-    <h3>Отправить заявку</h3>
-    <form id="feedbackForm">
-        <input type="text" id="userName" placeholder="Ваше имя" required>
-        <input type="email" id="userEmail" placeholder="Ваш Email" required>
-        <button type="submit">Отправить в облако</button>
-    </form>
+<div class="container">
+
+    <div class="form-container">
+        <h3>Отправить заявку</h3>
+        <form id="feedbackForm">
+            <input type="text" id="userName" placeholder="Ваше имя" required>
+            <input type="email" id="userEmail" placeholder="Ваш Email" required>
+            <button type="submit" id="submitBtn">Отправить в облако</button>
+        </form>
+    </div>
+
+    <h3 style="text-align:center; color:#444;">Последние заявки</h3>
+    <div id="feed"></div>
+
 </div>
 
 <script type="module">
-    // Импортируем модули Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+    import {
+        getFirestore,
+        collection,
+        addDoc,
+        query,
+        orderBy,
+        onSnapshot,
+        doc,
+        updateDoc,
+        increment,
+        serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-    // ТВОИ КЛЮЧИ СО СКРИНШОТА
     const firebaseConfig = {
-      apiKey: "AIzaSyBoJg-KVJ0rIHP116EwP3e-Koz2yficbXY",
-      authDomain: "fir-f0bac.firebaseapp.com",
-      projectId: "fir-f0bac",
-      storageBucket: "fir-f0bac.firebasestorage.app",
-      messagingSenderId: "1060638693890",
-      appId: "1:1060638693890:web:79278db107221db79f651b",
-      measurementId: "G-WT0YTFFQ2L"
+        apiKey: "AIzaSyBoJg-KVJ0rIHP116EwP3e-Koz2yficbXY",
+        authDomain: "fir-f0bac.firebaseapp.com",
+        projectId: "fir-f0bac",
+        storageBucket: "fir-f0bac.firebasestorage.app",
+        messagingSenderId: "1060638693890",
+        appId: "1:1060638693890:web:79278db107221db79f651b",
+        measurementId: "G-WT0YTFFQ2L"
     };
 
-
-    // Инициализация
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Логика кнопки
-    document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
+    const form = document.getElementById("feedbackForm");
+    const submitBtn = document.getElementById("submitBtn");
+    const feed = document.getElementById("feed");
+
+    // Отправка формы
+    form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        
-        const nameInput = document.getElementById("userName").value;
-        const emailInput = document.getElementById("userEmail").value;
+        submitBtn.disabled = true;
+
+        const name = document.getElementById("userName").value.trim();
+        const email = document.getElementById("userEmail").value.trim();
 
         try {
-            // Запись в коллекцию "requests"
             await addDoc(collection(db, "requests"), {
-                name: nameInput,
-                email: emailInput,
-                timestamp: new Date()
+                name,
+                email,
+                likes: 0,
+                timestamp: serverTimestamp()
             });
-            alert("Готово! Данные сохранены в Firebase.");
-            document.getElementById("feedbackForm").reset();
+
+            alert("Готово! Заявка сохранена.");
+            form.reset();
         } catch (error) {
-            console.error("Ошибка записи: ", error);
-            alert("Ошибка при отправке.");
+            console.error("Ошибка:", error);
+            alert("Не удалось отправить :(\n" + error.message);
+        } finally {
+            submitBtn.disabled = false;
         }
+    });
+
+    window.addLike = async (docId) => {
+        try {
+            const docRef = doc(db, "requests", docId);
+            await updateDoc(docRef, {
+                likes: increment(1)
+            });
+        } catch (err) {
+            console.error("Ошибка лайка:", err);
+        }
+    };
+
+    // Реал-тайм отображение заявок
+    const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+        feed.innerHTML = "";
+
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const id = docSnap.id;
+
+            const timeStr = data.timestamp
+                ? new Date(data.timestamp.toDate()).toLocaleString("ru-RU", {
+                    dateStyle: "medium",
+                    timeStyle: "short"
+                })
+                : "…";
+
+            const post = document.createElement("div");
+            post.className = "post";
+            post.innerHTML = `
+                <div class="post-header">
+                    <span class="time">${timeStr}</span>
+                </div>
+                <div class="post-name">${data.name || "Аноним"}</div>
+                <p style="margin: 8px 0;">${data.email}</p>
+                <button class="like-btn" onclick="addLike('${id}')">
+                    👍 ${data.likes || 0}
+                </button>
+            `;
+
+            feed.appendChild(post);
+        });
+    }, (error) => {
+        console.error("Ошибка подписки:", error);
+        feed.innerHTML = "<p style='color:red; text-align:center;'>Ошибка загрузки данных</p>";
     });
 </script>
 </body>
