@@ -73,28 +73,27 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 1. Добавление заявки
+    // ─── 1. Добавление заявки ───
     async function addRequest(name, email) {
         try {
             const docRef = await addDoc(collection(db, "requests"), {
                 name: name.trim(),
                 email: email.trim(),
                 likes: 0,
-                status: "new",                  // ← добавили статус
+                dislikes: 0,                    
+                status: "new",
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
-            console.log("Создана заявка:", docRef.id);
             return docRef.id;
         } catch (err) {
             console.error("Ошибка создания:", err);
+            alert("Не удалось создать заявку\n" + err.message);
             throw err;
         }
     }
 
-    // 2. Лайк (увеличение счётчика)
     async function likeRequest(requestId) {
-        if (!requestId) throw new Error("Нет ID");
         const docRef = doc(db, "requests", requestId);
         try {
             await updateDoc(docRef, {
@@ -103,48 +102,60 @@
             });
         } catch (err) {
             console.error("Ошибка лайка:", err);
-            throw err;
         }
     }
 
-    // 3. Удаление заявки
+    async function dislikeRequest(requestId) {
+        // Проверяем, ставил ли уже дизлайк этот браузер
+        const disliked = localStorage.getItem(`disliked_${requestId}`);
+        if (disliked === "true") {
+            alert("Вы уже поставили дизлайк этой заявке");
+            return;
+        }
+
+        const docRef = doc(db, "requests", requestId);
+        try {
+            await updateDoc(docRef, {
+                dislikes: increment(1),
+                updatedAt: serverTimestamp()
+            });
+            // Запоминаем в localStorage
+            localStorage.setItem(`disliked_${requestId}`, "true");
+            console.log(`Дизлайк добавлен: ${requestId}`);
+        } catch (err) {
+            console.error("Ошибка дизлайка:", err);
+            alert("Не удалось поставить дизлайк");
+        }
+    }
+
     async function deleteRequest(requestId) {
-        if (!requestId) throw new Error("Нет ID");
+        if (!confirm("Точно удалить эту заявку?")) return;
         const docRef = doc(db, "requests", requestId);
         try {
             await deleteDoc(docRef);
-            console.log("Заявка удалена:", requestId);
         } catch (err) {
             console.error("Ошибка удаления:", err);
-            alert("Не удалось удалить заявку\n" + err.message);
+            alert("Не удалось удалить");
         }
     }
 
-    // 4. Изменение статуса заявки
     async function updateRequestStatus(requestId, newStatus) {
-        if (!requestId) throw new Error("Нет ID");
-        if (!["new", "in_progress", "done"].includes(newStatus)) {
-            throw new Error("Недопустимый статус");
-        }
         const docRef = doc(db, "requests", requestId);
         try {
             await updateDoc(docRef, {
                 status: newStatus,
                 updatedAt: serverTimestamp()
             });
-            console.log(`Статус → ${newStatus} для ${requestId}`);
         } catch (err) {
-            console.error("Ошибка изменения статуса:", err);
-            alert("Не удалось изменить статус");
+            console.error("Ошибка статуса:", err);
         }
     }
 
-    // Делаем функции доступными для onclick
     window.likeRequest         = likeRequest;
+    window.dislikeRequest      = dislikeRequest;
     window.deleteRequest       = deleteRequest;
     window.updateRequestStatus = updateRequestStatus;
 
-    // Обработчик формы
     const form = document.getElementById("feedbackForm");
     const submitBtn = document.getElementById("submitBtn");
 
@@ -152,56 +163,66 @@
         e.preventDefault();
         submitBtn.disabled = true;
 
-        const name  = document.getElementById("userName").value;
-        const email = document.getElementById("userEmail").value;
+        const name  = document.getElementById("userName").value.trim();
+        const email = document.getElementById("userEmail").value.trim();
+
+        if (!name || !email) {
+            alert("Заполните имя и email");
+            submitBtn.disabled = false;
+            return;
+        }
 
         try {
             await addRequest(name, email);
-            alert("Заявка отправлена!");
             form.reset();
+            alert("Заявка отправлена!");
         } catch (err) {
-            alert("Ошибка: " + err.message);
+            // ошибка уже показана внутри addRequest
         } finally {
             submitBtn.disabled = false;
         }
     });
 
-    // Реал-тайм отображение
     const feed = document.getElementById("feed");
     const q = query(collection(db, "requests"), orderBy("createdAt", "desc"));
 
     onSnapshot(q, (snapshot) => {
         feed.innerHTML = "";
 
+        if (snapshot.empty) {
+            feed.innerHTML = '<p style="text-align:center; color:#777;">Пока нет заявок</p>';
+            return;
+        }
+
         snapshot.forEach((docSnap) => {
             const data = docSnap.data();
             const id = docSnap.id;
 
-            const timeStr = data.createdAt
-                ? new Date(data.createdAt.toDate()).toLocaleString("ru-RU")
+            const time = data.createdAt 
+                ? new Date(data.createdAt.toDate()).toLocaleString("ru-RU") 
                 : "…";
 
-            let statusHtml = "";
-            if (data.status) {
-                let cls = "";
-                if (data.status === "new")        cls = "new";
-                if (data.status === "in_progress") cls = "progress";
-                if (data.status === "done")       cls = "done";
-                statusHtml = `<span class="status status-${cls}">${data.status}</span>`;
-            }
+            const statusClass = {
+                "new": "new",
+                "in_progress": "progress",
+                "done": "done"
+            }[data.status || "new"] || "new";
 
             const post = document.createElement("div");
             post.className = "post";
             post.innerHTML = `
                 <div class="post-header">
-                    <span class="time">${timeStr}</span>
-                    ${statusHtml}
+                    <span class="time">${time}</span>
+                    <span class="status status-${statusClass}">${data.status || "new"}</span>
                 </div>
                 <div class="post-name">${data.name || "Аноним"}</div>
-                <p style="margin:8px 0;">${data.email}</p>
-                <div style="margin-top:12px;">
+                <p>${data.email}</p>
+                <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
                     <button class="like-btn" onclick="likeRequest('${id}')">
                         👍 ${data.likes || 0}
+                    </button>
+                    <button class="like-btn" style="background:#ffcccc;" onclick="dislikeRequest('${id}')">
+                        👎 ${data.dislikes || 0}
                     </button>
                     <button class="status-btn" onclick="updateRequestStatus('${id}', 'in_progress')">
                         В работу
@@ -214,13 +235,10 @@
                     </button>
                 </div>
             `;
-
             feed.appendChild(post);
         });
-    }, (err) => {
-        feed.innerHTML = `<p style="color:red; text-align:center;">Ошибка загрузки данных</p>`;
-        console.error(err);
+    }, (error) => {
+        console.error("onSnapshot ошибка:", error);
+        feed.innerHTML = '<p style="color:red; text-align:center;">Ошибка загрузки заявок. Проверьте консоль (F12).</p>';
     });
 </script>
-</body>
-</html>
