@@ -4,106 +4,44 @@
     <meta charset="UTF-8">
     <title>Мой облачный проект</title>
     <style>
-        body {
-            font-family: sans-serif;
-            background-color: #f4f4f9;
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-        }
-        .container {
-            max-width: 700px;
-            margin: 0 auto;
-        }
-        .form-container {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #f4b400;
-            border: none;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        button:hover {
-            background: #dfa400;
-        }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        #feed {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        .post {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-        .post-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 0.9em;
-            color: #555;
-        }
-        .post-name {
-            font-weight: bold;
-            color: #333;
-        }
-        .like-btn {
-            background: #eee;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.9em;
-        }
-        .like-btn:hover {
-            background: #ffeb3b;
-        }
-        .time {
-            color: #888;
-            font-size: 0.85em;
-        }
+        body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; min-height: 100vh; }
+        .container { max-width: 700px; margin: 0 auto; }
+        .form-container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
+        button { padding: 10px 16px; background: #f4b400; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; font-size: 14px; }
+        button:hover { background: #dfa400; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .delete-btn { background: #e74c3c; }
+        .delete-btn:hover { background: #c0392b; }
+        .status-btn { background: #3498db; margin-left: 8px; }
+        .status-btn:hover { background: #2980b9; }
+        #feed { display: flex; flex-direction: column; gap: 15px; }
+        .post { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .post-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.9em; color: #555; }
+        .post-name { font-weight: bold; color: #333; }
+        .like-btn { background: #eee; border: none; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 0.9em; }
+        .like-btn:hover { background: #ffeb3b; }
+        .time { color: #888; font-size: 0.85em; }
+        .status { font-size: 0.9em; padding: 4px 10px; border-radius: 12px; color: white; }
+        .status-new    { background: #95a5a6; }
+        .status-progress { background: #f39c12; }
+        .status-done   { background: #27ae60; }
     </style>
 </head>
 <body>
 
 <div class="container">
-
     <div class="form-container">
         <h3>Отправить заявку</h3>
         <form id="feedbackForm">
-            <input type="text" id="userName" placeholder="Ваше имя" required>
-            <input type="email" id="userEmail" placeholder="Ваш Email" required>
+            <input type="text"   id="userName"  placeholder="Ваше имя" required>
+            <input type="email"  id="userEmail" placeholder="Ваш Email" required>
             <button type="submit" id="submitBtn">Отправить в облако</button>
         </form>
     </div>
 
     <h3 style="text-align:center; color:#444;">Последние заявки</h3>
     <div id="feed"></div>
-
 </div>
 
 <script type="module">
@@ -118,7 +56,8 @@
         doc,
         updateDoc,
         increment,
-        serverTimestamp
+        serverTimestamp,
+        deleteDoc
     } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -134,48 +73,78 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Функция 1: Добавление новой заявки
+    // 1. Добавление заявки
     async function addRequest(name, email) {
         try {
             const docRef = await addDoc(collection(db, "requests"), {
                 name: name.trim(),
                 email: email.trim(),
                 likes: 0,
-                createdAt: serverTimestamp(),   // точное серверное время
+                status: "new",                  // ← добавили статус
+                createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             });
-            console.log("Заявка добавлена, ID:", docRef.id);
+            console.log("Создана заявка:", docRef.id);
             return docRef.id;
-        } catch (error) {
-            console.error("Ошибка добавления заявки:", error);
-            throw error;
+        } catch (err) {
+            console.error("Ошибка создания:", err);
+            throw err;
         }
     }
 
-    // Функция 2: Поставить лайк (атомарное увеличение)
+    // 2. Лайк (увеличение счётчика)
     async function likeRequest(requestId) {
-        if (!requestId) {
-            throw new Error("ID заявки не передан");
-        }
+        if (!requestId) throw new Error("Нет ID");
         const docRef = doc(db, "requests", requestId);
         try {
             await updateDoc(docRef, {
                 likes: increment(1),
                 updatedAt: serverTimestamp()
             });
-            console.log(`Лайк добавлен к ${requestId}`);
-        } catch (error) {
-            console.error("Ошибка при лайке:", error);
-            if (error.code === "not-found") {
-                alert("Эта заявка больше не существует");
-            }
-            throw error;
+        } catch (err) {
+            console.error("Ошибка лайка:", err);
+            throw err;
         }
     }
 
-    // ────────────────────────────────────────────────
-    // Обработчик формы (использует функцию addRequest)
-    // ────────────────────────────────────────────────
+    // 3. Удаление заявки
+    async function deleteRequest(requestId) {
+        if (!requestId) throw new Error("Нет ID");
+        const docRef = doc(db, "requests", requestId);
+        try {
+            await deleteDoc(docRef);
+            console.log("Заявка удалена:", requestId);
+        } catch (err) {
+            console.error("Ошибка удаления:", err);
+            alert("Не удалось удалить заявку\n" + err.message);
+        }
+    }
+
+    // 4. Изменение статуса заявки
+    async function updateRequestStatus(requestId, newStatus) {
+        if (!requestId) throw new Error("Нет ID");
+        if (!["new", "in_progress", "done"].includes(newStatus)) {
+            throw new Error("Недопустимый статус");
+        }
+        const docRef = doc(db, "requests", requestId);
+        try {
+            await updateDoc(docRef, {
+                status: newStatus,
+                updatedAt: serverTimestamp()
+            });
+            console.log(`Статус → ${newStatus} для ${requestId}`);
+        } catch (err) {
+            console.error("Ошибка изменения статуса:", err);
+            alert("Не удалось изменить статус");
+        }
+    }
+
+    // Делаем функции доступными для onclick
+    window.likeRequest         = likeRequest;
+    window.deleteRequest       = deleteRequest;
+    window.updateRequestStatus = updateRequestStatus;
+
+    // Обработчик формы
     const form = document.getElementById("feedbackForm");
     const submitBtn = document.getElementById("submitBtn");
 
@@ -183,24 +152,21 @@
         e.preventDefault();
         submitBtn.disabled = true;
 
-        const name = document.getElementById("userName").value;
+        const name  = document.getElementById("userName").value;
         const email = document.getElementById("userEmail").value;
 
         try {
             await addRequest(name, email);
-            alert("Заявка успешно отправлена!");
+            alert("Заявка отправлена!");
             form.reset();
         } catch (err) {
-            alert("Не удалось отправить заявку\n" + err.message);
+            alert("Ошибка: " + err.message);
         } finally {
             submitBtn.disabled = false;
         }
     });
 
-    // Глобальная функция для кнопок лайков (чтобы onclick мог её вызвать)
-    window.likeRequest = likeRequest;
-
-    // Реал-тайм список заявок─
+    // Реал-тайм отображение
     const feed = document.getElementById("feed");
     const q = query(collection(db, "requests"), orderBy("createdAt", "desc"));
 
@@ -212,30 +178,48 @@
             const id = docSnap.id;
 
             const timeStr = data.createdAt
-                ? new Date(data.createdAt.toDate()).toLocaleString("ru-RU", {
-                    dateStyle: "medium",
-                    timeStyle: "short"
-                })
-                : "загружается...";
+                ? new Date(data.createdAt.toDate()).toLocaleString("ru-RU")
+                : "…";
+
+            let statusHtml = "";
+            if (data.status) {
+                let cls = "";
+                if (data.status === "new")        cls = "new";
+                if (data.status === "in_progress") cls = "progress";
+                if (data.status === "done")       cls = "done";
+                statusHtml = `<span class="status status-${cls}">${data.status}</span>`;
+            }
 
             const post = document.createElement("div");
             post.className = "post";
             post.innerHTML = `
                 <div class="post-header">
                     <span class="time">${timeStr}</span>
+                    ${statusHtml}
                 </div>
                 <div class="post-name">${data.name || "Аноним"}</div>
-                <p style="margin: 8px 0;">${data.email}</p>
-                <button class="like-btn" onclick="likeRequest('${id}')">
-                    👍 ${data.likes || 0}
-                </button>
+                <p style="margin:8px 0;">${data.email}</p>
+                <div style="margin-top:12px;">
+                    <button class="like-btn" onclick="likeRequest('${id}')">
+                        👍 ${data.likes || 0}
+                    </button>
+                    <button class="status-btn" onclick="updateRequestStatus('${id}', 'in_progress')">
+                        В работу
+                    </button>
+                    <button class="status-btn" onclick="updateRequestStatus('${id}', 'done')">
+                        Завершено
+                    </button>
+                    <button class="delete-btn" onclick="deleteRequest('${id}')">
+                        🗑 Удалить
+                    </button>
+                </div>
             `;
 
             feed.appendChild(post);
         });
     }, (err) => {
-        console.error("Ошибка подписки:", err);
-        feed.innerHTML = `<p style="color:red; text-align:center;">Не удалось загрузить заявки</p>`;
+        feed.innerHTML = `<p style="color:red; text-align:center;">Ошибка загрузки данных</p>`;
+        console.error(err);
     });
 </script>
 </body>
