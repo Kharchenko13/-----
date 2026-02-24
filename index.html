@@ -92,6 +92,19 @@
             width: 30px;
             height: 30px;
             border-radius: 50%;
+            object-fit: cover;
+        }
+        .post-image {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .post-image:hover {
+            transform: scale(1.02);
         }
         .like-btn {
             cursor: pointer;
@@ -114,9 +127,73 @@
         #messageForm {
             margin-top: 20px;
         }
+        .file-input {
+            border: 2px dashed #ddd;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            margin: 10px 0;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .file-input:hover {
+            border-color: #007bff;
+            background: #f0f8ff;
+        }
+        .file-input.has-file {
+            border-color: #28a745;
+            background: #e8f5e9;
+        }
+        .preview-image {
+            max-width: 100%;
+            max-height: 200px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+        .remove-image {
+            background: #dc3545;
+            padding: 5px 10px;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+        }
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
+
+<!-- Модальное окно для просмотра изображений -->
+<div id="imageModal" class="modal">
+    <span class="close" onclick="closeModal()">&times;</span>
+    <img class="modal-content" id="modalImage">
+</div>
 
 <div class="container">
     <!-- БЛОК АВТОРИЗАЦИИ -->
@@ -136,6 +213,14 @@
             <input type="text" id="name" placeholder="Ваше имя" readonly>
             <input type="email" id="email" placeholder="Ваш Email" readonly>
             <input type="text" id="content" placeholder="Текст сообщения" required>
+            
+            <!-- Блок загрузки изображения -->
+            <div class="file-input" id="fileInput" onclick="document.getElementById('imageUpload').click()">
+                <span id="fileInputText">📁 Нажмите для загрузки изображения (до 5 МБ)</span>
+            </div>
+            <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+            <div id="imagePreview"></div>
+            
             <button type="submit" id="mainBtn">Отправить в облако</button>
         </form>
     </div>
@@ -166,6 +251,13 @@
         signOut, 
         onAuthStateChanged 
     } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+    import {
+        getStorage,
+        ref,
+        uploadBytes,
+        getDownloadURL,
+        deleteObject
+    } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBoJg-KVJ0rIHP116EwP3e-Koz2yficbXY",
@@ -180,7 +272,12 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
+    const storage = getStorage(app);
     const provider = new GoogleAuthProvider();
+
+    // Переменные для хранения загруженного изображения
+    let selectedImageFile = null;
+    let imagePreviewUrl = null;
 
     // --- ЛОГИКА АВТОРИЗАЦИИ ---
     const loginBtn = document.getElementById('loginBtn');
@@ -209,17 +306,107 @@
         }
     });
 
-    // --- ФУНКЦИИ ДЛЯ РАБОТЫ С ЗАПРОСАМИ ---
-    window.processLike = async (id) => {
-        await updateDoc(doc(db, "requests", id), { likes: increment(1) });
+    // --- ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ ИЗОБРАЖЕНИЙ В STORAGE ---
+    async function uploadImage(file, userId) {
+        const fileName = `${Date.now()}_${file.name}`;
+        const storageRef = ref(storage, `images/${userId}/${fileName}`);
+        
+        try {
+            const snapshot = await uploadBytes(storageRef, file);
+            const downloadUrl = await getDownloadURL(snapshot.ref);
+            return {
+                url: downloadUrl,
+                path: `images/${userId}/${fileName}`,
+                name: fileName
+            };
+        } catch (error) {
+            console.error("Ошибка загрузки изображения:", error);
+            throw error;
+        }
+    }
+
+    // --- ФУНКЦИЯ ДЛЯ УДАЛЕНИЯ ИЗОБРАЖЕНИЯ ИЗ STORAGE ---
+    async function deleteImage(imagePath) {
+        if (!imagePath) return;
+        
+        try {
+            const imageRef = ref(storage, imagePath);
+            await deleteObject(imageRef);
+            console.log("Изображение удалено из Storage");
+        } catch (error) {
+            console.error("Ошибка удаления изображения:", error);
+        }
+    }
+
+    // --- ОБРАБОТЧИК ВЫБОРА ФАЙЛА ---
+    const imageUpload = document.getElementById('imageUpload');
+    const fileInput = document.getElementById('fileInput');
+    const fileInputText = document.getElementById('fileInputText');
+    const imagePreview = document.getElementById('imagePreview');
+
+    imageUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Проверка размера файла (5 МБ)
+        if (file.size > 5 * 1024 * 1024) {
+            alert("Файл слишком большой. Максимальный размер - 5 МБ");
+            imageUpload.value = '';
+            return;
+        }
+
+        // Проверка типа файла
+        if (!file.type.startsWith('image/')) {
+            alert("Пожалуйста, выберите изображение");
+            imageUpload.value = '';
+            return;
+        }
+
+        selectedImageFile = file;
+        fileInput.classList.add('has-file');
+        fileInputText.textContent = `📸 Выбрано: ${file.name}`;
+
+        // Создание предпросмотра
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            imagePreview.innerHTML = `
+                <div>
+                    <img src="${e.target.result}" class="preview-image" alt="Preview">
+                    <button class="remove-image" onclick="removeSelectedImage()">Удалить изображение</button>
+                </div>
+            `;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Функция для удаления выбранного изображения
+    window.removeSelectedImage = () => {
+        selectedImageFile = null;
+        imageUpload.value = '';
+        fileInput.classList.remove('has-file');
+        fileInputText.textContent = '📁 Нажмите для загрузки изображения (до 5 МБ)';
+        imagePreview.innerHTML = '';
     };
 
+    // --- ФУНКЦИЯ ДЛЯ ОТПРАВКИ ПОСТА С ИЗОБРАЖЕНИЕМ ---
     document.getElementById('mainBtn').onclick = async (e) => {
         e.preventDefault();
         const content = document.getElementById('content').value;
         if (!content) return alert("Введите текст сообщения!");
 
+        const submitBtn = document.getElementById('mainBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Отправка...';
+
         try {
+            let imageData = null;
+            
+            // Загружаем изображение, если оно выбрано
+            if (selectedImageFile) {
+                imageData = await uploadImage(selectedImageFile, auth.currentUser.uid);
+            }
+
+            // Создаем документ в Firestore
             await addDoc(collection(db, "requests"), {
                 name: auth.currentUser.displayName,
                 email: auth.currentUser.email,
@@ -229,13 +416,42 @@
                 dislikes: 0,
                 status: "new",
                 createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
+                updatedAt: serverTimestamp(),
+                imageUrl: imageData?.url || null,
+                imagePath: imageData?.path || null,
+                userId: auth.currentUser.uid
             });
+
+            // Очищаем форму
             document.getElementById('content').value = "";
+            removeSelectedImage();
             alert("Сообщение отправлено!");
         } catch (e) {
-            alert("Ошибка безопасности! Проверьте правила (Rules) в Firebase.");
+            alert("Ошибка! Проверьте консоль (F12)");
             console.error(e);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить в облако';
+        }
+    };
+
+    // --- ФУНКЦИЯ ДЛЯ ОТКРЫТИЯ МОДАЛЬНОГО ОКНА ---
+    window.openModal = (imageUrl) => {
+        const modal = document.getElementById('imageModal');
+        const modalImg = document.getElementById('modalImage');
+        modal.style.display = "block";
+        modalImg.src = imageUrl;
+    };
+
+    window.closeModal = () => {
+        document.getElementById('imageModal').style.display = "none";
+    };
+
+    // Закрытие модального окна при клике вне изображения
+    window.onclick = (event) => {
+        const modal = document.getElementById('imageModal');
+        if (event.target == modal) {
+            modal.style.display = "none";
         }
     };
 
@@ -292,10 +508,17 @@
         }
     }
 
-    async function deleteRequest(requestId) {
+    async function deleteRequest(requestId, imagePath) {
         if (!confirm("Точно удалить эту заявку?")) return;
+        
         const docRef = doc(db, "requests", requestId);
         try {
+            // Сначала удаляем изображение, если оно есть
+            if (imagePath) {
+                await deleteImage(imagePath);
+            }
+            
+            // Затем удаляем документ
             await deleteDoc(docRef);
         } catch (err) {
             console.error("Ошибка удаления:", err);
@@ -381,14 +604,20 @@
             // Определяем, какой текст показывать (из старой или новой системы)
             const displayText = data.text || data.email || "Нет текста";
             
+            // Добавляем блок с изображением, если оно есть
+            const imageHtml = data.imageUrl ? `
+                <img src="${data.imageUrl}" class="post-image" alt="Post image" onclick="openModal('${data.imageUrl}')">
+            ` : '';
+            
             post.innerHTML = `
                 <div class="post-header">
-                    <img src="${data.photo || 'https://via.placeholder.com/30'}" class="post-avatar">
+                    <img src="${data.photo || 'https://via.placeholder.com/30'}" class="post-avatar" onerror="this.src='https://via.placeholder.com/30'">
                     <b>${data.name || "Аноним"}</b>
                     <span class="time">${time}</span>
                     <span class="status status-${statusClass}">${data.status || "new"}</span>
                 </div>
                 <p>${displayText}</p>
+                ${imageHtml}
                 <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
                     <button class="like-btn" onclick="likeRequest('${id}')">
                         👍 ${data.likes || 0}
@@ -402,7 +631,7 @@
                     <button class="status-btn" onclick="updateRequestStatus('${id}', 'done')">
                         Завершено
                     </button>
-                    <button class="delete-btn" onclick="deleteRequest('${id}')">
+                    <button class="delete-btn" onclick="deleteRequest('${id}', '${data.imagePath || ''}')">
                         🗑 Удалить
                     </button>
                 </div>
