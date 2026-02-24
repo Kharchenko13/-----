@@ -26,17 +26,117 @@
         .status-new    { background: #95a5a6; }
         .status-progress { background: #f39c12; }
         .status-done   { background: #27ae60; }
+        .auth-bar {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #007bff;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            width: 100%;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button.disabled {
+            background: #ccc;
+        }
+        .logout-btn {
+            background: #ff4757;
+            padding: 8px 15px;
+            width: auto;
+            font-size: 14px;
+        }
+        .post {
+            background: #fff;
+            border: 1px solid #eaeaea;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+        }
+        .post-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .post-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+        }
+        .like-btn {
+            cursor: pointer;
+            border: none;
+            background: #f9f9fa;
+            padding: 5px 12px;
+            border-radius: 20px;
+            margin-top: 10px;
+        }
+        .time {
+            font-size: 11px;
+            color: #999;
+            margin-left: auto;
+        }
+        #userInfo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #messageForm {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="form-container">
-        <h3>Отправить заявку</h3>
+    <!-- БЛОК АВТОРИЗАЦИИ -->
+    <div class="auth-bar">
+        <button id="loginBtn" style="width: auto;">Войти через Google</button>
+        <div id="userInfo" style="display: none; flex: 1;">
+            <img id="userPhoto" class="user-avatar" src="" alt="Avatar">
+            <span id="userName"></span>
+            <button id="logoutBtn" class="logout-btn" style="width: auto; margin-left: auto;">Выйти</button>
+        </div>
+    </div>
+
+    <!-- ФОРМА ДЛЯ СООБЩЕНИЙ (СКРЫТА ДЛЯ НЕАВТОРИЗОВАННЫХ) -->
+    <div class="form-container" id="messageForm" style="display: none;">
+        <h3>Отправить сообщение</h3>
         <form id="feedbackForm">
-            <input type="text"   id="userName"  placeholder="Ваше имя" required>
-            <input type="email"  id="userEmail" placeholder="Ваш Email" required>
-            <button type="submit" id="submitBtn">Отправить в облако</button>
+            <input type="text" id="name" placeholder="Ваше имя" readonly>
+            <input type="email" id="email" placeholder="Ваш Email" readonly>
+            <input type="text" id="content" placeholder="Текст сообщения" required>
+            <button type="submit" id="mainBtn">Отправить в облако</button>
         </form>
     </div>
 
@@ -46,19 +146,26 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-    import {
-        getFirestore,
-        collection,
-        addDoc,
-        query,
-        orderBy,
-        onSnapshot,
-        doc,
-        updateDoc,
+    import { 
+        getFirestore, 
+        collection, 
+        addDoc, 
+        query, 
+        orderBy, 
+        onSnapshot, 
+        doc, 
+        updateDoc, 
         increment,
         serverTimestamp,
-        deleteDoc
+        deleteDoc 
     } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+    import { 
+        getAuth, 
+        signInWithPopup, 
+        GoogleAuthProvider, 
+        signOut, 
+        onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBoJg-KVJ0rIHP116EwP3e-Koz2yficbXY",
@@ -72,8 +179,67 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
 
-    // ─── 1. Добавление заявки ───
+    // --- ЛОГИКА АВТОРИЗАЦИИ ---
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const userInfo = document.getElementById('userInfo');
+    const messageForm = document.getElementById('messageForm');
+
+    loginBtn.onclick = () => signInWithPopup(auth, provider);
+    logoutBtn.onclick = () => signOut(auth);
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            loginBtn.style.display = 'none';
+            userInfo.style.display = 'flex';
+            messageForm.style.display = 'block';
+            
+            document.getElementById('userName').innerText = user.displayName;
+            document.getElementById('userPhoto').src = user.photoURL;
+            document.getElementById('name').value = user.displayName;
+            document.getElementById('email').value = user.email;
+
+        } else {
+            loginBtn.style.display = 'block';
+            userInfo.style.display = 'none';
+            messageForm.style.display = 'none';
+        }
+    });
+
+    // --- ФУНКЦИИ ДЛЯ РАБОТЫ С ЗАПРОСАМИ ---
+    window.processLike = async (id) => {
+        await updateDoc(doc(db, "requests", id), { likes: increment(1) });
+    };
+
+    document.getElementById('mainBtn').onclick = async (e) => {
+        e.preventDefault();
+        const content = document.getElementById('content').value;
+        if (!content) return alert("Введите текст сообщения!");
+
+        try {
+            await addDoc(collection(db, "requests"), {
+                name: auth.currentUser.displayName,
+                email: auth.currentUser.email,
+                photo: auth.currentUser.photoURL,
+                text: content,
+                likes: 0,
+                dislikes: 0,
+                status: "new",
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            });
+            document.getElementById('content').value = "";
+            alert("Сообщение отправлено!");
+        } catch (e) {
+            alert("Ошибка безопасности! Проверьте правила (Rules) в Firebase.");
+            console.error(e);
+        }
+    };
+
+    // --- СУЩЕСТВУЮЩИЕ ФУНКЦИИ ИЗ ВАШЕГО КОДА ---
     async function addRequest(name, email) {
         try {
             const docRef = await addDoc(collection(db, "requests"), {
@@ -106,7 +272,6 @@
     }
 
     async function dislikeRequest(requestId) {
-        // Проверяем, ставил ли уже дизлайк этот браузер
         const disliked = localStorage.getItem(`disliked_${requestId}`);
         if (disliked === "true") {
             alert("Вы уже поставили дизлайк этой заявке");
@@ -119,7 +284,6 @@
                 dislikes: increment(1),
                 updatedAt: serverTimestamp()
             });
-            // Запоминаем в localStorage
             localStorage.setItem(`disliked_${requestId}`, "true");
             console.log(`Дизлайк добавлен: ${requestId}`);
         } catch (err) {
@@ -151,11 +315,13 @@
         }
     }
 
-    window.likeRequest         = likeRequest;
-    window.dislikeRequest      = dislikeRequest;
-    window.deleteRequest       = deleteRequest;
+    // Экспортируем функции в глобальную область видимости
+    window.likeRequest = likeRequest;
+    window.dislikeRequest = dislikeRequest;
+    window.deleteRequest = deleteRequest;
     window.updateRequestStatus = updateRequestStatus;
 
+    // --- ОБРАБОТЧИК ФОРМЫ (старая форма) ---
     const form = document.getElementById("feedbackForm");
     const submitBtn = document.getElementById("submitBtn");
 
@@ -183,6 +349,7 @@
         }
     });
 
+    // --- СЛУШАТЕЛЬ ИЗМЕНЕНИЙ В FIREBASE ---
     const feed = document.getElementById("feed");
     const q = query(collection(db, "requests"), orderBy("createdAt", "desc"));
 
@@ -210,13 +377,18 @@
 
             const post = document.createElement("div");
             post.className = "post";
+            
+            // Определяем, какой текст показывать (из старой или новой системы)
+            const displayText = data.text || data.email || "Нет текста";
+            
             post.innerHTML = `
                 <div class="post-header">
+                    <img src="${data.photo || 'https://via.placeholder.com/30'}" class="post-avatar">
+                    <b>${data.name || "Аноним"}</b>
                     <span class="time">${time}</span>
                     <span class="status status-${statusClass}">${data.status || "new"}</span>
                 </div>
-                <div class="post-name">${data.name || "Аноним"}</div>
-                <p>${data.email}</p>
+                <p>${displayText}</p>
                 <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
                     <button class="like-btn" onclick="likeRequest('${id}')">
                         👍 ${data.likes || 0}
@@ -241,4 +413,8 @@
         console.error("onSnapshot ошибка:", error);
         feed.innerHTML = '<p style="color:red; text-align:center;">Ошибка загрузки заявок. Проверьте консоль (F12).</p>';
     });
+
+    window.db = db; // Для тестов в консоли
 </script>
+</body>
+</html>
