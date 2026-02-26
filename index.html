@@ -230,81 +230,223 @@
 </div>
 
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-    import { 
-        getFirestore, 
-        collection, 
-        addDoc, 
-        query, 
-        orderBy, 
-        onSnapshot, 
-        doc, 
-        updateDoc, 
-        increment,
-        serverTimestamp,
-        deleteDoc 
-    } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-    import { 
-        getAuth, 
-        signInWithPopup, 
-        GoogleAuthProvider, 
-        signOut, 
-        onAuthStateChanged 
-    } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-    import {
-        getStorage,
-        ref,
-        uploadBytes,
-        getDownloadURL,
-        deleteObject
-    } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyBoJg-KVJ0rIHP116EwP3e-Koz2yficbXY",
-        authDomain: "fir-f0bac.firebaseapp.com",
-        projectId: "fir-f0bac",
-        storageBucket: "fir-f0bac.firebasestorage.app",
-        messagingSenderId: "1060638693890",
-        appId: "1:1060638693890:web:79278db107221db79f651b",
-        measurementId: "G-WT0YTFFQ2L"
-    };
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    query, 
+    orderBy, 
+    onSnapshot, 
+    doc, 
+    updateDoc, 
+    increment,
+    serverTimestamp,
+    deleteDoc,
+    getDocs,
+    setDoc
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    const storage = getStorage(app);
-    const provider = new GoogleAuthProvider();
+import { 
+    getAuth, 
+    signInWithPopup, 
+    GoogleAuthProvider, 
+    signOut, 
+    onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
-    // Переменные для хранения загруженного изображения
-    let selectedImageFile = null;
-    let imagePreviewUrl = null;
+import {
+    getStorage,
+    ref,
+    uploadBytes,
+    getDownloadURL,
+    deleteObject
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
 
-    // --- ЛОГИКА АВТОРИЗАЦИИ ---
-    const loginBtn = document.getElementById('loginBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const userInfo = document.getElementById('userInfo');
-    const messageForm = document.getElementById('messageForm');
+const firebaseConfig = {
+    apiKey: "AIzaSyBoJg-KVJ0rIHP116EwP3e-Koz2yficbXY",
+    authDomain: "fir-f0bac.firebaseapp.com",
+    projectId: "fir-f0bac",
+    storageBucket: "fir-f0bac.firebasestorage.app",
+    messagingSenderId: "1060638693890",
+    appId: "1:1060638693890:web:79278db107221db79f651b",
+    measurementId: "G-WT0YTFFQ2L"
+};
 
-    loginBtn.onclick = () => signInWithPopup(auth, provider);
-    logoutBtn.onclick = () => signOut(auth);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
+const provider = new GoogleAuthProvider();
 
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            loginBtn.style.display = 'none';
-            userInfo.style.display = 'flex';
-            messageForm.style.display = 'block';
-            
-            document.getElementById('userName').innerText = user.displayName;
-            document.getElementById('userPhoto').src = user.photoURL;
-            document.getElementById('name').value = user.displayName;
-            document.getElementById('email').value = user.email;
+let selectedImageFile = null;
 
-        } else {
-            loginBtn.style.display = 'block';
-            userInfo.style.display = 'none';
-            messageForm.style.display = 'none';
+const loginBtn = document.getElementById('loginBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const userInfo = document.getElementById('userInfo');
+const messageForm = document.getElementById('messageForm');
+
+loginBtn.onclick = () => signInWithPopup(auth, provider);
+logoutBtn.onclick = () => signOut(auth);
+
+onAuthStateChanged(auth, async (user) => {
+
+    if (user) {
+
+        loginBtn.style.display = 'none';
+        userInfo.style.display = 'flex';
+        messageForm.style.display = 'block';
+
+        document.getElementById('userName').innerText = user.displayName;
+        document.getElementById('userPhoto').src = user.photoURL;
+        document.getElementById('name').value = user.displayName;
+        document.getElementById('email').value = user.email;
+
+        // сохраняем пользователя
+        await setDoc(doc(db, "users", user.uid), {
+            email: user.email,
+            name: user.displayName,
+            photo: user.photoURL
+        });
+
+        loadForwardUsers();
+
+    } else {
+        loginBtn.style.display = 'block';
+        userInfo.style.display = 'none';
+        messageForm.style.display = 'none';
+    }
+});
+
+async function loadForwardUsers() {
+
+    const snapshot = await getDocs(collection(db, "users"));
+    const select = document.getElementById("forwardToUser");
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Отправить только в заявки</option>';
+
+    snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.email !== auth.currentUser.email) {
+            const option = document.createElement("option");
+            option.value = data.email;
+            option.textContent = data.email;
+            select.appendChild(option);
         }
     });
+}
+
+async function getOrCreateConversation(otherEmail) {
+
+    const snapshot = await getDocs(collection(db, "conversations"));
+    let existingId = null;
+
+    snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (
+            data.participants.includes(auth.currentUser.email) &&
+            data.participants.includes(otherEmail)
+        ) {
+            existingId = docSnap.id;
+        }
+    });
+
+    if (existingId) return existingId;
+
+    const newConv = await addDoc(collection(db, "conversations"), {
+        participants: [auth.currentUser.email, otherEmail],
+        lastMessage: "",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+    });
+
+    return newConv.id;
+}
+
+async function uploadImage(file, userId) {
+
+    const fileName = `${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, `images/${userId}/${fileName}`);
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadUrl = await getDownloadURL(snapshot.ref);
+
+    return {
+        url: downloadUrl,
+        path: `images/${userId}/${fileName}`
+    };
+}
+
+// =====================
+// ОТПРАВКА ЗАЯВКИ + DM
+// =====================
+
+document.getElementById('mainBtn').onclick = async (e) => {
+
+    e.preventDefault();
+
+    const content = document.getElementById('content').value.trim();
+    const forwardEmail = document.getElementById("forwardToUser")?.value;
+
+    if (!content) return alert("Введите текст сообщения!");
+
+    const submitBtn = document.getElementById('mainBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Отправка...";
+
+    try {
+
+        let imageData = null;
+
+        if (selectedImageFile) {
+            imageData = await uploadImage(selectedImageFile, auth.currentUser.uid);
+        }
+
+        await addDoc(collection(db, "requests"), {
+            name: auth.currentUser.displayName,
+            email: auth.currentUser.email,
+            photo: auth.currentUser.photoURL,
+            text: content,
+            likes: 0,
+            dislikes: 0,
+            status: "new",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            imageUrl: imageData?.url || null,
+            imagePath: imageData?.path || null,
+            userId: auth.currentUser.uid
+        });
+
+        if (forwardEmail) {
+
+            const conversationId = await getOrCreateConversation(forwardEmail);
+
+            await addDoc(collection(db, "messages"), {
+                conversationId,
+                fromEmail: auth.currentUser.email,
+                toEmail: forwardEmail,
+                text: content,
+                createdAt: serverTimestamp()
+            });
+
+            await updateDoc(doc(db, "conversations", conversationId), {
+                lastMessage: content,
+                updatedAt: serverTimestamp()
+            });
+        }
+
+        document.getElementById('content').value = "";
+        alert("Сообщение отправлено!");
+
+    } catch (err) {
+        console.error(err);
+        alert("Ошибка отправки. Смотрите консоль.");
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Отправить в облако";
+};
 
     // --- ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ ИЗОБРАЖЕНИЙ В STORAGE ---
     async function uploadImage(file, userId) {
