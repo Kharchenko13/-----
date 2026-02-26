@@ -803,7 +803,6 @@ const provider = new GoogleAuthProvider();
 let currentUser = null;
 let selectedImageFile = null;
 let currentConvId = null;
-let currentChatEmail = null;   // email собеседника в открытом чате
 let allUsers = [];
 let convListeners = {};
 let msgUnsubscribe = null;
@@ -1067,7 +1066,6 @@ function updateUnreadBadge() {
 // ─── Open conversation ────────────────────────────────────
 function openConversation(convId, otherEmail) {
   currentConvId = convId;
-  currentChatEmail = otherEmail;   // сохраняем email собеседника
   const user = getUserByEmail(otherEmail);
   const name = user?.name || otherEmail;
   const photo = user?.photo || '';
@@ -1086,80 +1084,46 @@ function openConversation(convId, otherEmail) {
 
   // Listen messages
   if (msgUnsubscribe) msgUnsubscribe();
-  // Только where — без orderBy чтобы не нужен составной индекс Firebase
-  const mq = query(collection(db,"messages"), where("conversationId","==",convId));
+  const mq = query(collection(db,"messages"), where("conversationId","==",convId), orderBy("createdAt","asc"));
   msgUnsubscribe = onSnapshot(mq, (snap) => {
     const container = document.getElementById("dmMessages");
     container.innerHTML = "";
-
-    // Сортируем на клиенте
-    const msgs = [];
-    snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
-    msgs.sort((a, b) => {
-      const ta = a.createdAt?.toMillis?.() || 0;
-      const tb = b.createdAt?.toMillis?.() || 0;
-      return ta - tb;
-    });
-
-    msgs.forEach(data => {
+    snap.forEach(d => {
+      const data = d.data();
       const isOut = data.fromEmail === currentUser?.email;
-      const time = data.createdAt ? new Date(data.createdAt.toDate()).toLocaleTimeString("ru-RU",{hour:'2-digit',minute:'2-digit'}) : '...'
+      const time = data.createdAt ? new Date(data.createdAt.toDate()).toLocaleTimeString("ru-RU",{hour:'2-digit',minute:'2-digit'}) : '';
       const bubble = document.createElement("div");
       bubble.className = "msg-bubble " + (isOut ? "msg-out" : "msg-in");
       bubble.innerHTML = `${data.text}<div class="msg-time">${time}</div>`;
       container.appendChild(bubble);
     });
     container.scrollTop = container.scrollHeight;
-  }, (err) => {
-    console.error("Ошибка загрузки сообщений:", err);
-    document.getElementById("dmMessages").innerHTML =
-      `<div style="color:var(--danger);text-align:center;padding:20px;">Ошибка: ${err.message}</div>`;
   });
 }
 
 // ─── Send DM ──────────────────────────────────────────────
 window.sendDm = async () => {
   const text = document.getElementById("dmInput").value.trim();
-  if (!text || !currentUser) {
-    console.log("sendDm: нет текста или пользователя", {text, currentUser: !!currentUser});
-    return;
-  }
-  if (!currentConvId) {
-    console.log("sendDm: нет currentConvId");
-    return;
-  }
-  if (!currentChatEmail) {
-    console.log("sendDm: нет currentChatEmail");
-    return;
-  }
-
-  // Сразу очищаем поле
+  if (!text || !currentConvId || !currentUser) return;
+  const conv = convSnapshot.find(c => c.id === currentConvId);
+  if (!conv) return;
+  const toEmail = getOtherEmail(conv);
   document.getElementById("dmInput").value = "";
   document.getElementById("dmInput").style.height = "auto";
-  document.getElementById("dmSendBtn").disabled = true;
 
   try {
-    console.log("Отправка сообщения:", { convId: currentConvId, to: currentChatEmail, text });
-    await addDoc(collection(db,"messages"), {
+    await addDoc(collection(db,"messages"),{
       conversationId: currentConvId,
       fromEmail: currentUser.email,
-      toEmail: currentChatEmail,
+      toEmail,
       text,
       createdAt: serverTimestamp()
     });
-    await updateDoc(doc(db,"conversations",currentConvId), {
+    await updateDoc(doc(db,"conversations",currentConvId),{
       lastMessage: text,
       updatedAt: serverTimestamp()
     });
-    console.log("Сообщение отправлено успешно");
-  } catch(e) {
-    console.error("Ошибка отправки:", e);
-    alert("Ошибка отправки: " + e.message);
-    // Вернуть текст обратно
-    document.getElementById("dmInput").value = text;
-  } finally {
-    document.getElementById("dmSendBtn").disabled = false;
-  }
+  } catch(e) { console.error(e); }
 };
 
 // ─── New Chat Modal ───────────────────────────────────────
