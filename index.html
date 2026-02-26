@@ -4,369 +4,338 @@
     <meta charset="UTF-8">
     <title>Мой облачный проект</title>
     <style>
-        body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 20px; min-height: 100vh; }
-        .container { max-width: 700px; margin: 0 auto; }
-        .form-container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 30px; }
-        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
-        button { padding: 10px 16px; background: #f4b400; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; font-size: 14px; }
-        button:hover { background: #dfa400; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        .delete-btn { background: #e74c3c; }
-        .delete-btn:hover { background: #c0392b; }
-        .status-btn { background: #3498db; margin-left: 8px; }
-        .status-btn:hover { background: #2980b9; }
-        #feed { display: flex; flex-direction: column; gap: 15px; }
-        .post { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-        .post-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.9em; color: #555; }
-        .post-name { font-weight: bold; color: #333; }
-        .like-btn { background: #eee; border: none; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 0.9em; }
-        .like-btn:hover { background: #ffeb3b; }
-        .time { color: #888; font-size: 0.85em; }
-        .status { font-size: 0.9em; padding: 4px 10px; border-radius: 12px; color: white; }
-        .status-new    { background: #95a5a6; }
-        .status-progress { background: #f39c12; }
-        .status-done   { background: #27ae60; }
-        .auth-bar {
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .container {
+            flex: 1;
+            display: flex;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        /* Левая панель — список диалогов */
+        .sidebar {
+            width: 360px;
             background: white;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            border-right: 1px solid #ddd;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid #ddd;
+            font-weight: 600;
+            font-size: 17px;
+        }
+
+        .chat-item {
+            padding: 12px 16px;
             display: flex;
             align-items: center;
-            gap: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 2px solid #007bff;
-        }
-        .logout-btn {
-            background: #ff4757;
-            padding: 8px 15px;
-            width: auto;
-            font-size: 14px;
-            margin-left: auto;
-        }
-        .file-input {
-            border: 2px dashed #ddd;
-            padding: 20px;
-            text-align: center;
+            gap: 12px;
             cursor: pointer;
-            margin: 10px 0;
-            border-radius: 8px;
-            transition: all 0.3s;
+            border-bottom: 1px solid #eee;
         }
-        .file-input:hover { border-color: #007bff; background: #f0f8ff; }
-        .file-input.has-file { border-color: #28a745; background: #e8f5e9; }
-        .preview-image { max-width: 100%; max-height: 200px; margin: 10px 0; border-radius: 8px; }
-        .remove-image { background: #dc3545; padding: 5px 10px; font-size: 12px; margin-top: 5px; }
-        .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); }
-        .modal-content { margin: auto; display: block; max-width: 90%; max-height: 90%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-        .close { position: absolute; top: 15px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer; }
+        .chat-item:hover,
+        .chat-item.active {
+            background: #f0f2f5;
+        }
+        .chat-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #e4e6eb;
+        }
+        .chat-info {
+            flex: 1;
+            overflow: hidden;
+        }
+        .chat-name {
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .chat-last-msg {
+            font-size: 14px;
+            color: #65676b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Правая часть — чат */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #e5ddd5 url('https://i.imgur.com/...)') repeat; /* опционально фон как в WhatsApp */
+        }
+
+        .chat-header {
+            padding: 12px 16px;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+        }
+
+        .messages-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .message {
+            max-width: 65%;
+            padding: 8px 12px;
+            border-radius: 18px;
+            line-height: 1.4;
+            position: relative;
+        }
+        .message.sent {
+            align-self: flex-end;
+            background: #0084ff;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .message.received {
+            align-self: flex-start;
+            background: white;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .input-area {
+            padding: 12px 16px;
+            background: white;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 12px;
+        }
+        #dmInput {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 24px;
+            font-size: 16px;
+            outline: none;
+        }
+        #sendDmBtn {
+            padding: 0 24px;
+            background: #0084ff;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        #sendDmBtn:hover {
+            background: #006be6;
+        }
+
+        /* существующие стили оставляем, но они теперь не мешают */
+        .auth-bar, .form-container, #feed {
+            display: none;   /* ← временно скрываем старые блоки, чтобы увидеть только чат */
+        }
     </style>
 </head>
 <body>
 
-<div id="imageModal" class="modal">
-    <span class="close" onclick="closeModal()">&times;</span>
-    <img class="modal-content" id="modalImage">
-</div>
-
 <div class="container">
+    <!-- Левая панель — список собеседников -->
+    <div class="sidebar">
+        <div class="sidebar-header">Выберите собеседника</div>
+        <div id="dialogList"></div>
+    </div>
 
-    <!-- Авторизация -->
-    <div class="auth-bar">
-        <button id="loginBtn" style="width:auto;">Войти через Google</button>
-        <div id="userInfo" style="display:none; flex:1;">
-            <img id="userPhoto" class="user-avatar" src="" alt="Avatar">
-            <span id="userName"></span>
-            <button id="logoutBtn" class="logout-btn">Выйти</button>
+    <!-- Правая часть — область чата -->
+    <div class="chat-area" id="chatArea" style="display:none;">
+        <div class="chat-header">
+            <img id="chatAvatar" class="chat-avatar" src="" alt="">
+            <div id="chatName">Чат</div>
+        </div>
+
+        <div class="messages-container" id="dmMessages"></div>
+
+        <div class="input-area">
+            <input type="text" id="dmInput" placeholder="Сообщение...">
+            <button id="sendDmBtn">➤</button>
         </div>
     </div>
-
-    <!-- Форма сообщений -->
-    <div class="form-container" id="messageForm" style="display:none;">
-        <h3>Отправить сообщение</h3>
-        <form id="feedbackForm">
-            <input type="text" id="name" placeholder="Ваше имя" readonly>
-            <input type="email" id="email" placeholder="Ваш Email" readonly>
-            <input type="text" id="content" placeholder="Текст сообщения" required>
-            
-            <!-- Выбор, кому отправить личное сообщение -->
-            <select id="forwardToUser" style="margin-bottom:10px;"></select>
-
-            <div class="file-input" id="fileInput" onclick="document.getElementById('imageUpload').click()">
-                <span id="fileInputText">📁 Нажмите для загрузки изображения (до 5 МБ)</span>
-            </div>
-            <input type="file" id="imageUpload" accept="image/*" style="display:none;">
-            <div id="imagePreview"></div>
-
-            <button type="submit" id="mainBtn">Отправить в облако</button>
-        </form>
-    </div>
-
-    <h3 style="text-align:center; color:#444;">Последние заявки</h3>
-    <div id="feed"></div>
-
-    <!-- Личные сообщения -->
-    <div class="form-container">
-        <h3>Личные сообщения</h3>
-        <select id="dmUserSelect"></select>
-        <div id="dmMessages" style="height:200px; overflow-y:auto; border:1px solid #ccc; padding:5px; margin-bottom:10px;"></div>
-        <input type="text" id="dmInput" placeholder="Введите сообщение">
-        <button id="sendDmBtn">Отправить DM</button>
-        <div id="dialogList" style="margin-top:15px;"></div>
-    </div>
-
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { 
-    getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, increment, serverTimestamp, deleteDoc, getDocs, setDoc 
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
+// ... весь твой существующий импорт Firebase остаётся без изменений ...
 
-// ==== Твой рабочий конфиг Firebase ====
-const firebaseConfig = {
-    apiKey: "AIzaSyBoJg-KVJ0rIHP116EwP3e-Koz2yficbXY",
-    authDomain: "fir-f0bac.firebaseapp.com",
-    projectId: "fir-f0bac",
-    storageBucket: "fir-f0bac.firebasestorage.app",
-    messagingSenderId: "1060638693890",
-    appId: "1:1060638693890:web:79278db107221db79f651b",
-    measurementId: "G-WT0YTFFQ2L"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
-const provider = new GoogleAuthProvider();
-
-let selectedImageFile = null;
-
-const loginBtn = document.getElementById('loginBtn');
-const logoutBtn = document.getElementById('logoutBtn');
-const userInfo = document.getElementById('userInfo');
-const messageForm = document.getElementById('messageForm');
-
-loginBtn.onclick = () => signInWithPopup(auth, provider);
-logoutBtn.onclick = () => signOut(auth);
-
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        loginBtn.style.display = 'none';
-        userInfo.style.display = 'flex';
-        messageForm.style.display = 'block';
-
-        document.getElementById('userName').innerText = user.displayName;
-        document.getElementById('userPhoto').src = user.photoURL;
-        document.getElementById('name').value = user.displayName;
-        document.getElementById('email').value = user.email;
-
-        // Сохраняем пользователя
-        await setDoc(doc(db, "users", user.uid), {
-            email: user.email,
-            name: user.displayName,
-            photo: user.photoURL
-        });
-
-        loadForwardUsers();
-        loadUsers(); // Для DM
-        loadConversations(); // Загрузка списка диалогов
-
-    } else {
-        loginBtn.style.display = 'block';
-        userInfo.style.display = 'none';
-        messageForm.style.display = 'none';
-    }
-});
-
-// === Функции загрузки пользователей для DM и Forward ===
-async function loadForwardUsers() {
-    const snapshot = await getDocs(collection(db, "users"));
-    const select = document.getElementById("forwardToUser");
-    if (!select) return;
-    select.innerHTML = '<option value="">Отправить только в заявки</option>';
-    snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data.email !== auth.currentUser.email) {
-            const option = document.createElement("option");
-            option.value = data.email;
-            option.textContent = data.email;
-            select.appendChild(option);
-        }
-    });
-}
-
-async function loadUsers() {
-    const snapshot = await getDocs(collection(db, "users"));
-    const select = document.getElementById("dmUserSelect");
-    select.innerHTML = '<option value="">Выберите пользователя</option>';
-    snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data.email !== auth.currentUser.email) {
-            const option = document.createElement("option");
-            option.value = data.email;
-            option.textContent = data.email;
-            select.appendChild(option);
-        }
-    });
-}
-
-// === Создание или получение диалога ===
-async function getOrCreateConversation(otherEmail) {
-    const snapshot = await getDocs(collection(db, "conversations"));
-    let foundId = null;
-    snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data.participants.includes(auth.currentUser.email) &&
-            data.participants.includes(otherEmail)) {
-            foundId = docSnap.id;
-        }
-    });
-    if (foundId) return foundId;
-
-    const newConv = await addDoc(collection(db, "conversations"), {
-        participants: [auth.currentUser.email, otherEmail],
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        lastMessage: ""
-    });
-    return newConv.id;
-}
-
-// === Загрузка изображения ===
-async function uploadImage(file, userId) {
-    const fileName = `${Date.now()}_${file.name}`;
-    const storageRef = ref(storage, `images/${userId}/${fileName}`);
-    const snapshot = await uploadBytes(storageRef, file);
-    const downloadUrl = await getDownloadURL(snapshot.ref);
-    return { url: downloadUrl, path: `images/${userId}/${fileName}` };
-}
-
-// === Выбор изображения ===
-const imageUpload = document.getElementById('imageUpload');
-const fileInput = document.getElementById('fileInput');
-const fileInputText = document.getElementById('fileInputText');
-const imagePreview = document.getElementById('imagePreview');
-
-imageUpload.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 5*1024*1024) { alert("Макс. размер 5МБ"); imageUpload.value=""; return;}
-    if (!file.type.startsWith('image/')) { alert("Выберите изображение"); imageUpload.value=""; return;}
-    selectedImageFile = file;
-    fileInput.classList.add('has-file');
-    fileInputText.textContent = `📸 Выбрано: ${file.name}`;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        imagePreview.innerHTML = `<div>
-            <img src="${e.target.result}" class="preview-image" alt="Preview">
-            <button class="remove-image" onclick="removeSelectedImage()">Удалить изображение</button>
-        </div>`;
-    };
-    reader.readAsDataURL(file);
-});
-
-window.removeSelectedImage = () => {
-    selectedImageFile = null;
-    imageUpload.value = '';
-    fileInput.classList.remove('has-file');
-    fileInputText.textContent = '📁 Нажмите для загрузки изображения (до 5 МБ)';
-    imagePreview.innerHTML = '';
-};
-
-// === Отправка заявки и DM ===
-document.getElementById('mainBtn').onclick = async (e) => {
-    e.preventDefault();
-    const content = document.getElementById('content').value;
-    const forwardEmail = document.getElementById("forwardToUser")?.value;
-    if (!content) return alert("Введите текст!");
-
-    let imageData = null;
-    if (selectedImageFile) imageData = await uploadImage(selectedImageFile, auth.currentUser.uid);
-
-    await addDoc(collection(db, "requests"), {
-        name: auth.currentUser.displayName,
-        email: auth.currentUser.email,
-        photo: auth.currentUser.photoURL,
-        text: content,
-        likes: 0,
-        dislikes: 0,
-        status: "new",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        imageUrl: imageData?.url || null,
-        imagePath: imageData?.path || null,
-        userId: auth.currentUser.uid
-    });
-
-    if (forwardEmail) {
-        const conversationId = await getOrCreateConversation(forwardEmail);
-        await addDoc(collection(db, "messages"), {
-            conversationId,
-            fromEmail: auth.currentUser.email,
-            toEmail: forwardEmail,
-            text: content,
-            createdAt: serverTimestamp()
-        });
-        await updateDoc(doc(db, "conversations", conversationId), {
-            lastMessage: content,
-            updatedAt: serverTimestamp()
-        });
-    }
-
-    document.getElementById('content').value = "";
-    removeSelectedImage();
-    alert("Сообщение отправлено!");
-};
-
-// === Модальное окно ===
-window.openModal = (url) => { document.getElementById('imageModal').style.display="block"; document.getElementById('modalImage').src=url; };
-window.closeModal = () => { document.getElementById('imageModal').style.display="none"; };
-window.onclick = (e)=>{ if(e.target==document.getElementById('imageModal')) closeModal(); };
-
-// === Личные сообщения ===
+// ────────────────────────────────────────────────
+//  Переменные
+// ────────────────────────────────────────────────
 let currentConversationId = null;
-document.getElementById("sendDmBtn").onclick = async () => {
-    const text = document.getElementById("dmInput").value.trim();
-    const targetEmail = document.getElementById("dmUserSelect").value;
-    if (!text || !targetEmail) return alert("Выберите пользователя и введите сообщение");
-    const conversationId = await getOrCreateConversation(targetEmail);
-    currentConversationId = conversationId;
-    await addDoc(collection(db,"messages"),{conversationId,fromEmail:auth.currentUser.email,toEmail:targetEmail,text,createdAt:serverTimestamp()});
-    await updateDoc(doc(db,"conversations",conversationId),{lastMessage:text,updatedAt:serverTimestamp()});
-    document.getElementById("dmInput").value="";
-};
+let currentOtherEmail = null;
 
-document.getElementById("dmUserSelect").onchange = async function(){
-    const email = this.value; if(!email) return;
-    const conversationId = await getOrCreateConversation(email);
-    currentConversationId = conversationId;
-    listenMessages(conversationId);
-};
+// ────────────────────────────────────────────────
+//  Загрузка списка диалогов
+// ────────────────────────────────────────────────
+async function loadConversations() {
+    const q = query(collection(db, "conversations"),
+        where("participants", "array-contains", auth.currentUser.email),
+        orderBy("updatedAt", "desc")
+    );
 
-function listenMessages(conversationId){
-    const q = query(collection(db,"messages"),orderBy("createdAt","asc"));
-    onSnapshot(q,snapshot=>{
-        const container=document.getElementById("dmMessages"); container.innerHTML="";
-        snapshot.forEach(docSnap=>{
-            const data=docSnap.data();
-            if(data.conversationId!==conversationId) return;
-            const div=document.createElement("div");
-            div.style.padding="6px"; div.style.marginBottom="5px"; div.style.borderRadius="6px";
-            div.style.background = data.fromEmail===auth.currentUser.email ? "#d1ecf1":"#f8d7da";
-            div.textContent=data.text;
+    onSnapshot(q, async (snapshot) => {
+        const container = document.getElementById("dialogList");
+        container.innerHTML = "";
+
+        if (snapshot.empty) {
+            container.innerHTML = "<div style='padding:20px; color:#777; text-align:center;'>Нет диалогов</div>";
+            return;
+        }
+
+        for (const docSnap of snapshot.docs) {
+            const conv = docSnap.data();
+            const otherEmail = conv.participants.find(e => e !== auth.currentUser.email);
+
+            // получаем данные собеседника
+            const userSnap = await getDoc(doc(db, "users", otherEmail));
+            if (!userSnap.exists()) continue;
+
+            const user = userSnap.data();
+
+            const item = document.createElement("div");
+            item.className = "chat-item";
+            item.dataset.convId = docSnap.id;
+            item.dataset.email = otherEmail;
+
+            item.innerHTML = `
+                <img class="chat-avatar" src="${user.photo || 'https://via.placeholder.com/56'}">
+                <div class="chat-info">
+                    <div class="chat-name">${user.name || otherEmail}</div>
+                    <div class="chat-last-msg">${conv.lastMessage || " "}</div>
+                </div>
+            `;
+
+            item.onclick = () => openConversation(docSnap.id, otherEmail, user);
+
+            container.appendChild(item);
+        }
+    });
+}
+
+// ────────────────────────────────────────────────
+//  Открытие конкретного чата
+// ────────────────────────────────────────────────
+async function openConversation(convId, otherEmail, userData) {
+    currentConversationId = convId;
+    currentOtherEmail = otherEmail;
+
+    document.getElementById("chatArea").style.display = "flex";
+    document.getElementById("chatName").textContent = userData.name || otherEmail;
+    document.getElementById("chatAvatar").src = userData.photo || "https://via.placeholder.com/56";
+
+    // подсветка активного
+    document.querySelectorAll(".chat-item").forEach(el => el.classList.remove("active"));
+    document.querySelector(`.chat-item[data-convId="${convId}"]`)?.classList.add("active");
+
+    listenMessages(convId);
+}
+
+// ────────────────────────────────────────────────
+//  Прослушка сообщений в текущем диалоге
+// ────────────────────────────────────────────────
+function listenMessages(convId) {
+    const q = query(
+        collection(db, "messages"),
+        where("conversationId", "==", convId),
+        orderBy("createdAt", "asc")
+    );
+
+    onSnapshot(q, (snapshot) => {
+        const container = document.getElementById("dmMessages");
+        container.innerHTML = "";
+
+        snapshot.forEach(docSnap => {
+            const msg = docSnap.data();
+            const isMine = msg.fromEmail === auth.currentUser.email;
+
+            const div = document.createElement("div");
+            div.className = `message ${isMine ? "sent" : "received"}`;
+            div.textContent = msg.text;
+
             container.appendChild(div);
         });
+
         container.scrollTop = container.scrollHeight;
     });
 }
 
-function loadConversations(){
-    const q=query(collection(db,"conversations"),
+// ────────────────────────────────────────────────
+//  Отправка сообщения
+// ────────────────────────────────────────────────
+document.getElementById("sendDmBtn").onclick = async () => {
+    const text = document.getElementById("dmInput").value.trim();
+    if (!text || !currentConversationId || !currentOtherEmail) return;
+
+    await addDoc(collection(db, "messages"), {
+        conversationId: currentConversationId,
+        fromEmail: auth.currentUser.email,
+        toEmail: currentOtherEmail,
+        text,
+        createdAt: serverTimestamp()
+    });
+
+    await updateDoc(doc(db, "conversations", currentConversationId), {
+        lastMessage: text,
+        updatedAt: serverTimestamp()
+    });
+
+    document.getElementById("dmInput").value = "";
+};
+
+// Enter для отправки
+document.getElementById("dmInput").addEventListener("keypress", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById("sendDmBtn").click();
+    }
+});
+
+// ────────────────────────────────────────────────
+//  После авторизации
+// ────────────────────────────────────────────────
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        // ... твой существующий код ...
+
+        await setDoc(doc(db, "users", user.uid), {
+            email: user.email,
+            name: user.displayName,
+            photo: user.photoURL
+        }, { merge: true });
+
+        loadConversations();           // ← главное изменение
+        // loadForwardUsers();         // можно оставить, если используешь в заявках
+        // loadUsers();                // можно убрать, если теперь используем только список диалогов
+    }
+    // ... остальной код ...
+});
+
+</script>
+</body>
+</html>
