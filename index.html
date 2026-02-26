@@ -644,6 +644,159 @@
     });
 
     window.db = db; // Для тестов в консоли
+
+    // ================================
+// ===== ЛИЧНЫЕ СООБЩЕНИЯ DM =====
+// ================================
+
+let currentConversationId = null;
+
+// Загрузка пользователей в select
+async function loadUsers() {
+    const snapshot = await getDocs(collection(db, "users"));
+    const select = document.getElementById("dmUserSelect");
+    select.innerHTML = '<option value="">Выберите пользователя</option>';
+
+    snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.email !== auth.currentUser.email) {
+            const option = document.createElement("option");
+            option.value = data.email;
+            option.textContent = data.email;
+            select.appendChild(option);
+        }
+    });
+}
+
+// Получить или создать диалог
+async function getOrCreateConversation(targetEmail) {
+    const snapshot = await getDocs(collection(db, "conversations"));
+    let existing = null;
+
+    snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (
+            data.participantsEmails.includes(auth.currentUser.email) &&
+            data.participantsEmails.includes(targetEmail)
+        ) {
+            existing = docSnap.id;
+        }
+    });
+
+    if (existing) return existing;
+
+    const docRef = await addDoc(collection(db, "conversations"), {
+        participantsEmails: [auth.currentUser.email, targetEmail],
+        lastMessage: "",
+        updatedAt: serverTimestamp()
+    });
+
+    return docRef.id;
+}
+
+// Отправка сообщения
+document.getElementById("sendDmBtn").onclick = async () => {
+    const text = document.getElementById("dmInput").value.trim();
+    const targetEmail = document.getElementById("dmUserSelect").value;
+
+    if (!text || !targetEmail) {
+        alert("Выберите пользователя и введите сообщение");
+        return;
+    }
+
+    const conversationId = await getOrCreateConversation(targetEmail);
+    currentConversationId = conversationId;
+
+    await addDoc(collection(db, "messages"), {
+        conversationId,
+        fromEmail: auth.currentUser.email,
+        toEmail: targetEmail,
+        text,
+        createdAt: serverTimestamp()
+    });
+
+    await updateDoc(doc(db, "conversations", conversationId), {
+        lastMessage: text,
+        updatedAt: serverTimestamp()
+    });
+
+    document.getElementById("dmInput").value = "";
+};
+
+// Слушаем выбор пользователя
+document.getElementById("dmUserSelect").onchange = async function() {
+    const email = this.value;
+    if (!email) return;
+
+    const conversationId = await getOrCreateConversation(email);
+    currentConversationId = conversationId;
+    listenMessages(conversationId);
+};
+
+// Слушаем сообщения
+function listenMessages(conversationId) {
+    const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
+
+    onSnapshot(q, snapshot => {
+        const container = document.getElementById("dmMessages");
+        container.innerHTML = "";
+
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.conversationId !== conversationId) return;
+
+            const div = document.createElement("div");
+            div.style.padding = "6px";
+            div.style.marginBottom = "5px";
+            div.style.borderRadius = "6px";
+            div.style.background =
+                data.fromEmail === auth.currentUser.email
+                ? "#d1ecf1"
+                : "#f8d7da";
+
+            div.textContent = data.text;
+            container.appendChild(div);
+        });
+
+        container.scrollTop = container.scrollHeight;
+    });
+}
+
+// Список диалогов
+function loadConversations() {
+    const q = query(collection(db, "conversations"), orderBy("updatedAt", "desc"));
+
+    onSnapshot(q, snapshot => {
+        const list = document.getElementById("dialogList");
+        list.innerHTML = "";
+
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+
+            if (!data.participantsEmails.includes(auth.currentUser.email)) return;
+
+            const other = data.participantsEmails.find(
+                e => e !== auth.currentUser.email
+            );
+
+            const div = document.createElement("div");
+            div.style.cursor = "pointer";
+            div.style.padding = "5px";
+            div.style.borderBottom = "1px solid #eee";
+            div.textContent = other + " — " + (data.lastMessage || "");
+
+            div.onclick = () => {
+                document.getElementById("dmUserSelect").value = other;
+                currentConversationId = docSnap.id;
+                listenMessages(docSnap.id);
+            };
+
+            list.appendChild(div);
+        });
+    });
+}
+
+    
 </script>
 </body>
 </html>
