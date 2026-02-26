@@ -652,35 +652,13 @@
 <div class="modal-overlay" id="newChatModal">
   <div class="modal-box">
     <h3>💬 Новый диалог</h3>
-
-    <!-- Ручной ввод email -->
-    <div style="margin-bottom:14px;">
-      <label style="font-size:13px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px;">
-        ✉️ Написать по email напрямую:
-      </label>
-      <div style="display:flex;gap:8px;">
-        <input class="form-input" id="manualEmailInput" placeholder="example@gmail.com" type="email"
-          style="margin:0;flex:1;" onkeydown="if(event.key==='Enter')startChatByEmail()">
-        <button class="btn btn-primary" onclick="startChatByEmail()" style="white-space:nowrap;width:auto;padding:10px 16px;">
-          Написать
-        </button>
-      </div>
-      <div id="emailInputError" style="color:var(--danger);font-size:12px;margin-top:4px;display:none;"></div>
-    </div>
-
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-      <span style="font-size:12px;color:var(--text-muted);font-weight:600;">или выберите из списка</span>
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-    </div>
-
-    <input class="form-input" id="userSearchInput" placeholder="🔍 Поиск по имени или email..." oninput="filterUserList(this.value)" style="margin-bottom:10px;">
+    <input class="form-input" id="userSearchInput" placeholder="Поиск по имени или email..." oninput="filterUserList(this.value)" style="margin-bottom:12px;">
     <div class="user-pick-list" id="userPickList">
-      <div style="text-align:center;color:var(--text-muted);padding:20px;font-size:14px;">⏳ Загрузка...</div>
+      <div style="text-align:center;color:var(--text-muted);padding:20px;font-size:14px;">Загрузка пользователей...</div>
     </div>
-    <div class="modal-actions" style="margin-top:14px;">
+    <div class="modal-actions">
       <button class="btn" onclick="closeNewChat()" style="background:var(--bg);color:var(--text);">Отмена</button>
-      <button class="btn btn-primary" onclick="startNewChat()" id="startChatBtn" disabled>Начать чат</button>
+      <button class="btn btn-primary" onclick="startNewChat()">Начать чат</button>
     </div>
   </div>
 </div>
@@ -997,7 +975,7 @@ function listenConversations() {
     convSnapshot = [];
     snap.forEach(d => {
       const data = d.data();
-      if (data.participantsEmails && data.participantsEmails.includes(currentUser.email)) {
+      if (data.participants && data.participants.includes(currentUser.email)) {
         convSnapshot.push({ id: d.id, ...data });
       }
     });
@@ -1007,7 +985,7 @@ function listenConversations() {
 }
 
 function getOtherEmail(conv) {
-  return (conv.participantsEmails||[]).find(e => e !== currentUser?.email) || "";
+  return (conv.participants||[]).find(e => e !== currentUser?.email) || "";
 }
 
 function getUserByEmail(email) {
@@ -1129,16 +1107,10 @@ window.sendDm = async () => {
 // ─── New Chat Modal ───────────────────────────────────────
 window.openNewChat = async () => {
   selectedNewChatUser = null;
-  document.getElementById("userSearchInput").value = '';
-  document.getElementById("manualEmailInput").value = '';
-  document.getElementById("emailInputError").style.display = 'none';
-  document.getElementById("startChatBtn").disabled = true;
-  document.getElementById("newChatModal").classList.add("open");
-  // Show loading then load
-  document.getElementById("userPickList").innerHTML =
-    '<div style="text-align:center;color:var(--text-muted);padding:20px;font-size:14px;">⏳ Загрузка пользователей...</div>';
   await loadAllUsers();
   renderUserPickList('');
+  document.getElementById("userSearchInput").value = '';
+  document.getElementById("newChatModal").classList.add("open");
 };
 
 window.closeNewChat = () => {
@@ -1146,71 +1118,30 @@ window.closeNewChat = () => {
   selectedNewChatUser = null;
 };
 
-// Начать чат по введённому email вручную
-window.startChatByEmail = async () => {
-  const emailInput = document.getElementById("manualEmailInput");
-  const errEl = document.getElementById("emailInputError");
-  const email = emailInput.value.trim().toLowerCase();
-  errEl.style.display = 'none';
-
-  if (!email) { errEl.textContent = "Введите email"; errEl.style.display = 'block'; return; }
-  // Basic email validation
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errEl.textContent = "Неверный формат email"; errEl.style.display = 'block'; return;
-  }
-  if (email === currentUser.email) {
-    errEl.textContent = "Нельзя написать самому себе"; errEl.style.display = 'block'; return;
-  }
-
-  const btn = document.getElementById("manualEmailInput").nextElementSibling;
-  btn.disabled = true; btn.textContent = '...';
-  try {
-    const convId = await getOrCreateConversation(email);
-    closeNewChat();
-    showTab('messages');
-    openConversation(convId, email);
-  } catch(e) {
-    errEl.textContent = "Ошибка: " + e.message; errEl.style.display = 'block';
-  } finally {
-    btn.disabled = false; btn.textContent = 'Написать';
-  }
-};
-
 function renderUserPickList(filter) {
   const list = document.getElementById("userPickList");
   list.innerHTML = "";
-
-  if (!allUsers.length) {
-    list.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:16px;">👆 Пока нет других пользователей.<br>Используйте ввод email выше.</div>';
-    return;
-  }
-
   const filtered = allUsers.filter(u =>
     u.name?.toLowerCase().includes(filter.toLowerCase()) ||
     u.email?.toLowerCase().includes(filter.toLowerCase())
   );
-
   if (!filtered.length) {
-    list.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:16px;">Никого не найдено</div>';
+    list.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Нет пользователей</div>';
     return;
   }
-
   filtered.forEach(u => {
     const item = document.createElement("div");
-    const isSelected = selectedNewChatUser?.uid === u.uid;
-    item.className = "user-pick-item" + (isSelected ? " selected" : "");
+    item.className = "user-pick-item" + (selectedNewChatUser?.uid === u.uid ? " selected" : "");
     item.innerHTML = `
       <div class="user-pick-avatar">
         ${u.photo ? `<img src="${u.photo}" onerror="this.style.display='none'">` : getInitials(u.name)}
       </div>
-      <div style="flex:1;min-width:0;">
+      <div>
         <div class="user-pick-name">${u.name || "Без имени"}</div>
         <div class="user-pick-email">${u.email}</div>
-      </div>
-      ${isSelected ? '<span style="color:var(--primary);font-size:18px;">✓</span>' : ''}`;
+      </div>`;
     item.onclick = () => {
       selectedNewChatUser = u;
-      document.getElementById("startChatBtn").disabled = false;
       renderUserPickList(filter);
     };
     list.appendChild(item);
@@ -1220,31 +1151,23 @@ function renderUserPickList(filter) {
 window.filterUserList = (val) => renderUserPickList(val);
 
 window.startNewChat = async () => {
-  if (!selectedNewChatUser || !currentUser) return;
-  const btn = document.getElementById("startChatBtn");
-  btn.disabled = true; btn.textContent = '...';
-  try {
-    const convId = await getOrCreateConversation(selectedNewChatUser.email);
-    closeNewChat();
-    showTab('messages');
-    openConversation(convId, selectedNewChatUser.email);
-  } catch(e) {
-    alert("Ошибка: " + e.message);
-  } finally {
-    btn.disabled = false; btn.textContent = 'Начать чат';
-  }
+  if (!selectedNewChatUser || !currentUser) return alert("Выберите пользователя");
+  const convId = await getOrCreateConversation(selectedNewChatUser.email);
+  closeNewChat();
+  showTab('messages');
+  openConversation(convId, selectedNewChatUser.email);
 };
 
 async function getOrCreateConversation(otherEmail) {
   // Check existing
   for (const c of convSnapshot) {
-    if ((c.participantsEmails||[]).includes(currentUser.email) && (c.participantsEmails||[]).includes(otherEmail)) {
+    if ((c.participants||[]).includes(currentUser.email) && (c.participants||[]).includes(otherEmail)) {
       return c.id;
     }
   }
   // Create new
   const ref2 = await addDoc(collection(db,"conversations"),{
-    participantsEmails: [currentUser.email, otherEmail],
+    participants: [currentUser.email, otherEmail],
     lastMessage: "",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
