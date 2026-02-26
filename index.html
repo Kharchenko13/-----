@@ -42,90 +42,12 @@
             border-radius: 50%;
             border: 2px solid #007bff;
         }
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            box-sizing: border-box;
-        }
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 6px;
-            width: 100%;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        button:hover {
-            background: #0056b3;
-        }
-        button.disabled {
-            background: #ccc;
-        }
         .logout-btn {
             background: #ff4757;
             padding: 8px 15px;
             width: auto;
             font-size: 14px;
-        }
-        .post {
-            background: #fff;
-            border: 1px solid #eaeaea;
-            padding: 15px;
-            margin-top: 15px;
-            border-radius: 8px;
-            width: 100%;
-            max-width: 500px;
-        }
-        .post-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        .post-avatar {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-        .post-image {
-            width: 100%;
-            max-height: 300px;
-            object-fit: cover;
-            border-radius: 8px;
-            margin: 10px 0;
-            cursor: pointer;
-            transition: transform 0.3s;
-        }
-        .post-image:hover {
-            transform: scale(1.02);
-        }
-        .like-btn {
-            cursor: pointer;
-            border: none;
-            background: #f9f9fa;
-            padding: 5px 12px;
-            border-radius: 20px;
-            margin-top: 10px;
-        }
-        .time {
-            font-size: 11px;
-            color: #999;
             margin-left: auto;
-        }
-        #userInfo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        #messageForm {
-            margin-top: 20px;
         }
         .file-input {
             border: 2px dashed #ddd;
@@ -136,142 +58,87 @@
             border-radius: 8px;
             transition: all 0.3s;
         }
-        .file-input:hover {
-            border-color: #007bff;
-            background: #f0f8ff;
-        }
-        .file-input.has-file {
-            border-color: #28a745;
-            background: #e8f5e9;
-        }
-        .preview-image {
-            max-width: 100%;
-            max-height: 200px;
-            margin: 10px 0;
-            border-radius: 8px;
-        }
-        .remove-image {
-            background: #dc3545;
-            padding: 5px 10px;
-            font-size: 12px;
-            margin-top: 5px;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.9);
-        }
-        .modal-content {
-            margin: auto;
-            display: block;
-            max-width: 90%;
-            max-height: 90%;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        .close {
-            position: absolute;
-            top: 15px;
-            right: 35px;
-            color: #f1f1f1;
-            font-size: 40px;
-            font-weight: bold;
-            cursor: pointer;
-        }
+        .file-input:hover { border-color: #007bff; background: #f0f8ff; }
+        .file-input.has-file { border-color: #28a745; background: #e8f5e9; }
+        .preview-image { max-width: 100%; max-height: 200px; margin: 10px 0; border-radius: 8px; }
+        .remove-image { background: #dc3545; padding: 5px 10px; font-size: 12px; margin-top: 5px; }
+        .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); }
+        .modal-content { margin: auto; display: block; max-width: 90%; max-height: 90%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .close { position: absolute; top: 15px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<!-- Модальное окно для просмотра изображений -->
 <div id="imageModal" class="modal">
     <span class="close" onclick="closeModal()">&times;</span>
     <img class="modal-content" id="modalImage">
 </div>
 
 <div class="container">
-    <!-- БЛОК АВТОРИЗАЦИИ -->
+
+    <!-- Авторизация -->
     <div class="auth-bar">
-        <button id="loginBtn" style="width: auto;">Войти через Google</button>
-        <div id="userInfo" style="display: none; flex: 1;">
+        <button id="loginBtn" style="width:auto;">Войти через Google</button>
+        <div id="userInfo" style="display:none; flex:1;">
             <img id="userPhoto" class="user-avatar" src="" alt="Avatar">
             <span id="userName"></span>
-            <button id="logoutBtn" class="logout-btn" style="width: auto; margin-left: auto;">Выйти</button>
+            <button id="logoutBtn" class="logout-btn">Выйти</button>
         </div>
     </div>
 
-    <!-- ФОРМА ДЛЯ СООБЩЕНИЙ (СКРЫТА ДЛЯ НЕАВТОРИЗОВАННЫХ) -->
-    <div class="form-container" id="messageForm" style="display: none;">
+    <!-- Форма сообщений -->
+    <div class="form-container" id="messageForm" style="display:none;">
         <h3>Отправить сообщение</h3>
         <form id="feedbackForm">
             <input type="text" id="name" placeholder="Ваше имя" readonly>
             <input type="email" id="email" placeholder="Ваш Email" readonly>
             <input type="text" id="content" placeholder="Текст сообщения" required>
             
-            <!-- Блок загрузки изображения -->
+            <!-- Выбор, кому отправить личное сообщение -->
+            <select id="forwardToUser" style="margin-bottom:10px;"></select>
+
             <div class="file-input" id="fileInput" onclick="document.getElementById('imageUpload').click()">
                 <span id="fileInputText">📁 Нажмите для загрузки изображения (до 5 МБ)</span>
             </div>
-            <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+            <input type="file" id="imageUpload" accept="image/*" style="display:none;">
             <div id="imagePreview"></div>
-            
+
             <button type="submit" id="mainBtn">Отправить в облако</button>
         </form>
     </div>
 
     <h3 style="text-align:center; color:#444;">Последние заявки</h3>
     <div id="feed"></div>
+
+    <!-- Личные сообщения -->
+    <div class="form-container">
+        <h3>Личные сообщения</h3>
+        <select id="dmUserSelect"></select>
+        <div id="dmMessages" style="height:200px; overflow-y:auto; border:1px solid #ccc; padding:5px; margin-bottom:10px;"></div>
+        <input type="text" id="dmInput" placeholder="Введите сообщение">
+        <button id="sendDmBtn">Отправить DM</button>
+        <div id="dialogList" style="margin-top:15px;"></div>
+    </div>
+
 </div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    query, 
-    orderBy, 
-    onSnapshot, 
-    doc, 
-    updateDoc, 
-    increment,
-    serverTimestamp,
-    deleteDoc,
-    getDocs,
-    setDoc
+    getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, increment, serverTimestamp, deleteDoc, getDocs, setDoc 
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
 
-import { 
-    getAuth, 
-    signInWithPopup, 
-    GoogleAuthProvider, 
-    signOut, 
-    onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-
-import {
-    getStorage,
-    ref,
-    uploadBytes,
-    getDownloadURL,
-    deleteObject
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
-
+// ==== Твой рабочий конфиг Firebase ====
 const firebaseConfig = {
-  apiKey: "AIzaSyBoJg-KVJ0rIHP116EwP3e-Koz2yficbXY",
-  authDomain: "fir-f0bac.firebaseapp.com",
-  projectId: "fir-f0bac",
-  storageBucket: "fir-f0bac.firebasestorage.app",
-  messagingSenderId: "1060638693890",
-  appId: "1:1060638693890:web:79278db107221db79f651b",
-  measurementId: "G-WT0YTFFQ2L"
+    apiKey: "AIzaSyBoJg-KVJ0rIHP116EwP3e-Koz2yficbXY",
+    authDomain: "fir-f0bac.firebaseapp.com",
+    projectId: "fir-f0bac",
+    storageBucket: "fir-f0bac.firebasestorage.app",
+    messagingSenderId: "1060638693890",
+    appId: "1:1060638693890:web:79278db107221db79f651b",
+    measurementId: "G-WT0YTFFQ2L"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -291,9 +158,7 @@ loginBtn.onclick = () => signInWithPopup(auth, provider);
 logoutBtn.onclick = () => signOut(auth);
 
 onAuthStateChanged(auth, async (user) => {
-
     if (user) {
-
         loginBtn.style.display = 'none';
         userInfo.style.display = 'flex';
         messageForm.style.display = 'block';
@@ -303,7 +168,7 @@ onAuthStateChanged(auth, async (user) => {
         document.getElementById('name').value = user.displayName;
         document.getElementById('email').value = user.email;
 
-        // сохраняем пользователя
+        // Сохраняем пользователя
         await setDoc(doc(db, "users", user.uid), {
             email: user.email,
             name: user.displayName,
@@ -311,6 +176,8 @@ onAuthStateChanged(auth, async (user) => {
         });
 
         loadForwardUsers();
+        loadUsers(); // Для DM
+        loadConversations(); // Загрузка списка диалогов
 
     } else {
         loginBtn.style.display = 'block';
@@ -319,14 +186,12 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
+// === Функции загрузки пользователей для DM и Forward ===
 async function loadForwardUsers() {
-
     const snapshot = await getDocs(collection(db, "users"));
     const select = document.getElementById("forwardToUser");
     if (!select) return;
-
     select.innerHTML = '<option value="">Отправить только в заявки</option>';
-
     snapshot.forEach(docSnap => {
         const data = docSnap.data();
         if (data.email !== auth.currentUser.email) {
@@ -338,117 +203,170 @@ async function loadForwardUsers() {
     });
 }
 
-async function getOrCreateConversation(otherEmail) {
-
-    const snapshot = await getDocs(collection(db, "conversations"));
-    let existingId = null;
-
+async function loadUsers() {
+    const snapshot = await getDocs(collection(db, "users"));
+    const select = document.getElementById("dmUserSelect");
+    select.innerHTML = '<option value="">Выберите пользователя</option>';
     snapshot.forEach(docSnap => {
         const data = docSnap.data();
-        if (
-            data.participants.includes(auth.currentUser.email) &&
-            data.participants.includes(otherEmail)
-        ) {
-            existingId = docSnap.id;
+        if (data.email !== auth.currentUser.email) {
+            const option = document.createElement("option");
+            option.value = data.email;
+            option.textContent = data.email;
+            select.appendChild(option);
         }
     });
+}
 
-    if (existingId) return existingId;
+// === Создание или получение диалога ===
+async function getOrCreateConversation(otherEmail) {
+    const snapshot = await getDocs(collection(db, "conversations"));
+    let foundId = null;
+    snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.participants.includes(auth.currentUser.email) &&
+            data.participants.includes(otherEmail)) {
+            foundId = docSnap.id;
+        }
+    });
+    if (foundId) return foundId;
 
     const newConv = await addDoc(collection(db, "conversations"), {
         participants: [auth.currentUser.email, otherEmail],
-        lastMessage: "",
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        lastMessage: ""
     });
-
     return newConv.id;
 }
 
+// === Загрузка изображения ===
 async function uploadImage(file, userId) {
-
     const fileName = `${Date.now()}_${file.name}`;
     const storageRef = ref(storage, `images/${userId}/${fileName}`);
     const snapshot = await uploadBytes(storageRef, file);
     const downloadUrl = await getDownloadURL(snapshot.ref);
-
-    return {
-        url: downloadUrl,
-        path: `images/${userId}/${fileName}`
-    };
+    return { url: downloadUrl, path: `images/${userId}/${fileName}` };
 }
 
-// =====================
-// ОТПРАВКА ЗАЯВКИ + DM
-// =====================
+// === Выбор изображения ===
+const imageUpload = document.getElementById('imageUpload');
+const fileInput = document.getElementById('fileInput');
+const fileInputText = document.getElementById('fileInputText');
+const imagePreview = document.getElementById('imagePreview');
 
-document.getElementById('mainBtn').onclick = async (e) => {
+imageUpload.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5*1024*1024) { alert("Макс. размер 5МБ"); imageUpload.value=""; return;}
+    if (!file.type.startsWith('image/')) { alert("Выберите изображение"); imageUpload.value=""; return;}
+    selectedImageFile = file;
+    fileInput.classList.add('has-file');
+    fileInputText.textContent = `📸 Выбрано: ${file.name}`;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        imagePreview.innerHTML = `<div>
+            <img src="${e.target.result}" class="preview-image" alt="Preview">
+            <button class="remove-image" onclick="removeSelectedImage()">Удалить изображение</button>
+        </div>`;
+    };
+    reader.readAsDataURL(file);
+});
 
-    e.preventDefault();
-
-    const content = document.getElementById('content').value.trim();
-    const forwardEmail = document.getElementById("forwardToUser")?.value;
-
-    if (!content) return alert("Введите текст сообщения!");
-
-    const submitBtn = document.getElementById('mainBtn');
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Отправка...";
-
-    try {
-
-        let imageData = null;
-
-        if (selectedImageFile) {
-            imageData = await uploadImage(selectedImageFile, auth.currentUser.uid);
-        }
-
-        await addDoc(collection(db, "requests"), {
-            name: auth.currentUser.displayName,
-            email: auth.currentUser.email,
-            photo: auth.currentUser.photoURL,
-            text: content,
-            likes: 0,
-            dislikes: 0,
-            status: "new",
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            imageUrl: imageData?.url || null,
-            imagePath: imageData?.path || null,
-            userId: auth.currentUser.uid
-        });
-
-        if (forwardEmail) {
-
-            const conversationId = await getOrCreateConversation(forwardEmail);
-
-            await addDoc(collection(db, "messages"), {
-                conversationId,
-                fromEmail: auth.currentUser.email,
-                toEmail: forwardEmail,
-                text: content,
-                createdAt: serverTimestamp()
-            });
-
-            await updateDoc(doc(db, "conversations", conversationId), {
-                lastMessage: content,
-                updatedAt: serverTimestamp()
-            });
-        }
-
-        document.getElementById('content').value = "";
-        alert("Сообщение отправлено!");
-
-    } catch (err) {
-        console.error(err);
-        alert("Ошибка отправки. Смотрите консоль.");
-    }
-
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Отправить в облако";
+window.removeSelectedImage = () => {
+    selectedImageFile = null;
+    imageUpload.value = '';
+    fileInput.classList.remove('has-file');
+    fileInputText.textContent = '📁 Нажмите для загрузки изображения (до 5 МБ)';
+    imagePreview.innerHTML = '';
 };
 
-    
-</script>
-</body>
-</html>
+// === Отправка заявки и DM ===
+document.getElementById('mainBtn').onclick = async (e) => {
+    e.preventDefault();
+    const content = document.getElementById('content').value;
+    const forwardEmail = document.getElementById("forwardToUser")?.value;
+    if (!content) return alert("Введите текст!");
+
+    let imageData = null;
+    if (selectedImageFile) imageData = await uploadImage(selectedImageFile, auth.currentUser.uid);
+
+    await addDoc(collection(db, "requests"), {
+        name: auth.currentUser.displayName,
+        email: auth.currentUser.email,
+        photo: auth.currentUser.photoURL,
+        text: content,
+        likes: 0,
+        dislikes: 0,
+        status: "new",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        imageUrl: imageData?.url || null,
+        imagePath: imageData?.path || null,
+        userId: auth.currentUser.uid
+    });
+
+    if (forwardEmail) {
+        const conversationId = await getOrCreateConversation(forwardEmail);
+        await addDoc(collection(db, "messages"), {
+            conversationId,
+            fromEmail: auth.currentUser.email,
+            toEmail: forwardEmail,
+            text: content,
+            createdAt: serverTimestamp()
+        });
+        await updateDoc(doc(db, "conversations", conversationId), {
+            lastMessage: content,
+            updatedAt: serverTimestamp()
+        });
+    }
+
+    document.getElementById('content').value = "";
+    removeSelectedImage();
+    alert("Сообщение отправлено!");
+};
+
+// === Модальное окно ===
+window.openModal = (url) => { document.getElementById('imageModal').style.display="block"; document.getElementById('modalImage').src=url; };
+window.closeModal = () => { document.getElementById('imageModal').style.display="none"; };
+window.onclick = (e)=>{ if(e.target==document.getElementById('imageModal')) closeModal(); };
+
+// === Личные сообщения ===
+let currentConversationId = null;
+document.getElementById("sendDmBtn").onclick = async () => {
+    const text = document.getElementById("dmInput").value.trim();
+    const targetEmail = document.getElementById("dmUserSelect").value;
+    if (!text || !targetEmail) return alert("Выберите пользователя и введите сообщение");
+    const conversationId = await getOrCreateConversation(targetEmail);
+    currentConversationId = conversationId;
+    await addDoc(collection(db,"messages"),{conversationId,fromEmail:auth.currentUser.email,toEmail:targetEmail,text,createdAt:serverTimestamp()});
+    await updateDoc(doc(db,"conversations",conversationId),{lastMessage:text,updatedAt:serverTimestamp()});
+    document.getElementById("dmInput").value="";
+};
+
+document.getElementById("dmUserSelect").onchange = async function(){
+    const email = this.value; if(!email) return;
+    const conversationId = await getOrCreateConversation(email);
+    currentConversationId = conversationId;
+    listenMessages(conversationId);
+};
+
+function listenMessages(conversationId){
+    const q = query(collection(db,"messages"),orderBy("createdAt","asc"));
+    onSnapshot(q,snapshot=>{
+        const container=document.getElementById("dmMessages"); container.innerHTML="";
+        snapshot.forEach(docSnap=>{
+            const data=docSnap.data();
+            if(data.conversationId!==conversationId) return;
+            const div=document.createElement("div");
+            div.style.padding="6px"; div.style.marginBottom="5px"; div.style.borderRadius="6px";
+            div.style.background = data.fromEmail===auth.currentUser.email ? "#d1ecf1":"#f8d7da";
+            div.textContent=data.text;
+            container.appendChild(div);
+        });
+        container.scrollTop = container.scrollHeight;
+    });
+}
+
+function loadConversations(){
+    const q=query(collection(db,"conversations"),
