@@ -652,13 +652,35 @@
 <div class="modal-overlay" id="newChatModal">
   <div class="modal-box">
     <h3>💬 Новый диалог</h3>
-    <input class="form-input" id="userSearchInput" placeholder="Поиск по имени или email..." oninput="filterUserList(this.value)" style="margin-bottom:12px;">
-    <div class="user-pick-list" id="userPickList">
-      <div style="text-align:center;color:var(--text-muted);padding:20px;font-size:14px;">Загрузка пользователей...</div>
+
+    <!-- Ручной ввод email -->
+    <div style="margin-bottom:14px;">
+      <label style="font-size:13px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px;">
+        ✉️ Написать по email напрямую:
+      </label>
+      <div style="display:flex;gap:8px;">
+        <input class="form-input" id="manualEmailInput" placeholder="example@gmail.com" type="email"
+          style="margin:0;flex:1;" onkeydown="if(event.key==='Enter')startChatByEmail()">
+        <button class="btn btn-primary" onclick="startChatByEmail()" style="white-space:nowrap;width:auto;padding:10px 16px;">
+          Написать
+        </button>
+      </div>
+      <div id="emailInputError" style="color:var(--danger);font-size:12px;margin-top:4px;display:none;"></div>
     </div>
-    <div class="modal-actions">
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+      <span style="font-size:12px;color:var(--text-muted);font-weight:600;">или выберите из списка</span>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>
+
+    <input class="form-input" id="userSearchInput" placeholder="🔍 Поиск по имени или email..." oninput="filterUserList(this.value)" style="margin-bottom:10px;">
+    <div class="user-pick-list" id="userPickList">
+      <div style="text-align:center;color:var(--text-muted);padding:20px;font-size:14px;">⏳ Загрузка...</div>
+    </div>
+    <div class="modal-actions" style="margin-top:14px;">
       <button class="btn" onclick="closeNewChat()" style="background:var(--bg);color:var(--text);">Отмена</button>
-      <button class="btn btn-primary" onclick="startNewChat()">Начать чат</button>
+      <button class="btn btn-primary" onclick="startNewChat()" id="startChatBtn" disabled>Начать чат</button>
     </div>
   </div>
 </div>
@@ -787,7 +809,7 @@ let msgUnsubscribe = null;
 let convSnapshot = [];
 let selectedNewChatUser = null;
 
-// ─── Tabs ────────────────────────────────────────────────
+// ─── Tabs ─────────────────────────────────────────────────
 window.showTab = (tab) => {
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
     b.classList.toggle('active', (i === 0 && tab === 'feed') || (i === 1 && tab === 'messages'));
@@ -797,6 +819,7 @@ window.showTab = (tab) => {
   if (tab === 'messages') renderConvList();
 };
 
+// ─── Auth ─────────────────────────────────────────────────
 document.getElementById('loginBtn').onclick = () => signInWithPopup(auth, provider).catch(e => alert(e.message));
 document.getElementById('logoutBtn').onclick = () => signOut(auth);
 
@@ -833,6 +856,7 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
+// ─── Load all users ───────────────────────────────────────
 async function loadAllUsers() {
   const snap = await getDocs(collection(db, "users"));
   allUsers = [];
@@ -844,6 +868,7 @@ async function loadAllUsers() {
   });
 }
 
+// ─── Image upload ─────────────────────────────────────────
 document.getElementById('imageUpload').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -877,6 +902,7 @@ async function uploadImage(file, userId) {
   return { url, path: `images/${userId}/${name}` };
 }
 
+// ─── Post submit ──────────────────────────────────────────
 document.getElementById('mainBtn').onclick = async (e) => {
   e.preventDefault();
   const content = document.getElementById('content').value.trim();
@@ -906,6 +932,7 @@ document.getElementById('mainBtn').onclick = async (e) => {
   finally { btn.disabled = false; btn.textContent = 'Отправить в облако'; }
 };
 
+// ─── Feed listener ────────────────────────────────────────
 const q = query(collection(db, "requests"), orderBy("createdAt", "desc"));
 onSnapshot(q, (snapshot) => {
   const feed = document.getElementById("feed");
@@ -962,6 +989,7 @@ window._openImg = (url) => {
   document.getElementById('imgModal').classList.add('open');
 };
 
+// ─── CONVERSATIONS ────────────────────────────────────────
 function listenConversations() {
   if (!currentUser) return;
   const q = query(collection(db, "conversations"), orderBy("updatedAt","desc"));
@@ -969,7 +997,7 @@ function listenConversations() {
     convSnapshot = [];
     snap.forEach(d => {
       const data = d.data();
-      if (data.participants && data.participants.includes(currentUser.email)) {
+      if (data.participantsEmails && data.participantsEmails.includes(currentUser.email)) {
         convSnapshot.push({ id: d.id, ...data });
       }
     });
@@ -979,7 +1007,7 @@ function listenConversations() {
 }
 
 function getOtherEmail(conv) {
-  return (conv.participants||[]).find(e => e !== currentUser?.email) || "";
+  return (conv.participantsEmails||[]).find(e => e !== currentUser?.email) || "";
 }
 
 function getUserByEmail(email) {
@@ -1035,6 +1063,7 @@ function updateUnreadBadge() {
   }
 }
 
+// ─── Open conversation ────────────────────────────────────
 function openConversation(convId, otherEmail) {
   currentConvId = convId;
   const user = getUserByEmail(otherEmail);
@@ -1072,6 +1101,7 @@ function openConversation(convId, otherEmail) {
   });
 }
 
+// ─── Send DM ──────────────────────────────────────────────
 window.sendDm = async () => {
   const text = document.getElementById("dmInput").value.trim();
   if (!text || !currentConvId || !currentUser) return;
@@ -1096,12 +1126,19 @@ window.sendDm = async () => {
   } catch(e) { console.error(e); }
 };
 
+// ─── New Chat Modal ───────────────────────────────────────
 window.openNewChat = async () => {
   selectedNewChatUser = null;
+  document.getElementById("userSearchInput").value = '';
+  document.getElementById("manualEmailInput").value = '';
+  document.getElementById("emailInputError").style.display = 'none';
+  document.getElementById("startChatBtn").disabled = true;
+  document.getElementById("newChatModal").classList.add("open");
+  // Show loading then load
+  document.getElementById("userPickList").innerHTML =
+    '<div style="text-align:center;color:var(--text-muted);padding:20px;font-size:14px;">⏳ Загрузка пользователей...</div>';
   await loadAllUsers();
   renderUserPickList('');
-  document.getElementById("userSearchInput").value = '';
-  document.getElementById("newChatModal").classList.add("open");
 };
 
 window.closeNewChat = () => {
@@ -1109,30 +1146,71 @@ window.closeNewChat = () => {
   selectedNewChatUser = null;
 };
 
+// Начать чат по введённому email вручную
+window.startChatByEmail = async () => {
+  const emailInput = document.getElementById("manualEmailInput");
+  const errEl = document.getElementById("emailInputError");
+  const email = emailInput.value.trim().toLowerCase();
+  errEl.style.display = 'none';
+
+  if (!email) { errEl.textContent = "Введите email"; errEl.style.display = 'block'; return; }
+  // Basic email validation
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent = "Неверный формат email"; errEl.style.display = 'block'; return;
+  }
+  if (email === currentUser.email) {
+    errEl.textContent = "Нельзя написать самому себе"; errEl.style.display = 'block'; return;
+  }
+
+  const btn = document.getElementById("manualEmailInput").nextElementSibling;
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const convId = await getOrCreateConversation(email);
+    closeNewChat();
+    showTab('messages');
+    openConversation(convId, email);
+  } catch(e) {
+    errEl.textContent = "Ошибка: " + e.message; errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Написать';
+  }
+};
+
 function renderUserPickList(filter) {
   const list = document.getElementById("userPickList");
   list.innerHTML = "";
+
+  if (!allUsers.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:16px;">👆 Пока нет других пользователей.<br>Используйте ввод email выше.</div>';
+    return;
+  }
+
   const filtered = allUsers.filter(u =>
     u.name?.toLowerCase().includes(filter.toLowerCase()) ||
     u.email?.toLowerCase().includes(filter.toLowerCase())
   );
+
   if (!filtered.length) {
-    list.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Нет пользователей</div>';
+    list.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:16px;">Никого не найдено</div>';
     return;
   }
+
   filtered.forEach(u => {
     const item = document.createElement("div");
-    item.className = "user-pick-item" + (selectedNewChatUser?.uid === u.uid ? " selected" : "");
+    const isSelected = selectedNewChatUser?.uid === u.uid;
+    item.className = "user-pick-item" + (isSelected ? " selected" : "");
     item.innerHTML = `
       <div class="user-pick-avatar">
         ${u.photo ? `<img src="${u.photo}" onerror="this.style.display='none'">` : getInitials(u.name)}
       </div>
-      <div>
+      <div style="flex:1;min-width:0;">
         <div class="user-pick-name">${u.name || "Без имени"}</div>
         <div class="user-pick-email">${u.email}</div>
-      </div>`;
+      </div>
+      ${isSelected ? '<span style="color:var(--primary);font-size:18px;">✓</span>' : ''}`;
     item.onclick = () => {
       selectedNewChatUser = u;
+      document.getElementById("startChatBtn").disabled = false;
       renderUserPickList(filter);
     };
     list.appendChild(item);
@@ -1142,23 +1220,31 @@ function renderUserPickList(filter) {
 window.filterUserList = (val) => renderUserPickList(val);
 
 window.startNewChat = async () => {
-  if (!selectedNewChatUser || !currentUser) return alert("Выберите пользователя");
-  const convId = await getOrCreateConversation(selectedNewChatUser.email);
-  closeNewChat();
-  showTab('messages');
-  openConversation(convId, selectedNewChatUser.email);
+  if (!selectedNewChatUser || !currentUser) return;
+  const btn = document.getElementById("startChatBtn");
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const convId = await getOrCreateConversation(selectedNewChatUser.email);
+    closeNewChat();
+    showTab('messages');
+    openConversation(convId, selectedNewChatUser.email);
+  } catch(e) {
+    alert("Ошибка: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Начать чат';
+  }
 };
 
 async function getOrCreateConversation(otherEmail) {
   // Check existing
   for (const c of convSnapshot) {
-    if ((c.participants||[]).includes(currentUser.email) && (c.participants||[]).includes(otherEmail)) {
+    if ((c.participantsEmails||[]).includes(currentUser.email) && (c.participantsEmails||[]).includes(otherEmail)) {
       return c.id;
     }
   }
   // Create new
   const ref2 = await addDoc(collection(db,"conversations"),{
-    participants: [currentUser.email, otherEmail],
+    participantsEmails: [currentUser.email, otherEmail],
     lastMessage: "",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
